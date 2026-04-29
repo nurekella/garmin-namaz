@@ -28,27 +28,46 @@ openssl pkcs8 -topk8 -inform PEM -outform DER -in developer_key.pem -out develop
 
 4. В VS Code установите расширение **Monkey C** (Garmin).
 
-## Сборка
+## Зависимости рантайма
 
-```bash
-# debug сборка для симулятора
-monkeyc -d epix2 -f monkey.jungle -o bin/namaz.prg -y developer_key
+- **Java JDK 17+** — Connect IQ SDK 9.x требует Java для запуска `monkeyc`.
+  Установка: `winget install Microsoft.OpenJDK.21`
+- **Connect IQ SDK 9.1.0+** через SDK Manager, device profile **Epix Gen 2**.
 
-# запуск симулятора и загрузка
-connectiq
-monkeydo bin/namaz.prg epix2
+## Сборка (PowerShell)
 
-# release-сборка для Connect IQ Store
-monkeyc -e -d epix2 -f monkey.jungle -o bin/namaz.iq -y developer_key -r
+В корне проекта лежат скрипты, которые сами находят SDK и Java:
+
+```powershell
+# debug сборка для epix2
+.\build.ps1
+
+# другая платформа
+.\build.ps1 -Device fenix7
+
+# release .iq для Connect IQ Store
+.\build.ps1 -Release
+
+# unit-тесты
+.\build.ps1 -Test
+
+# запуск симулятора и загрузка собранного prg
+.\run.ps1
+.\run.ps1 -Test
 ```
 
 В VS Code: `Ctrl+Shift+P` → `Monkey C: Build for Device` → Epix Gen 2.
 
-## Тесты
+## Сборка (bash / git-bash)
 
 ```bash
-monkeyc -d epix2 -f monkey.jungle -o bin/namaz_test.prg -y developer_key --unit-test
-monkeydo bin/namaz_test.prg epix2 -t
+export JAVA_HOME="/c/Program Files/Microsoft/jdk-21.0.10.7-hotspot"
+export PATH="$JAVA_HOME/bin:$PATH"
+SDK_BIN="/c/Users/n.khamzauly/AppData/Roaming/Garmin/ConnectIQ/Sdks/connectiq-sdk-win-9.1.0-2026-03-09-6a872a80b/bin"
+
+"$SDK_BIN/monkeyc.bat" -d epix2 -f monkey.jungle -o bin/namaz.prg -y developer_key
+"$SDK_BIN/connectiq.bat" &
+"$SDK_BIN/monkeydo.bat" bin/namaz.prg epix2
 ```
 
 ## Структура
