@@ -28,4 +28,14 @@ class NamazApp extends Application.AppBase {
         var delegate = new NamazDelegate(view);
         return [view, delegate];
     }
+
+    (:glance)
+    function getGlanceView() {
+        var location = new LocationProvider();
+        var calc = new PrayerCalculator(
+            DumkMethod.params(),
+            DumkMethod.DEFAULT_ASR,
+            null);
+        return [new GlanceView(calc, location)];
+    }
 }

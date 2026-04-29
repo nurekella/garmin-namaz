@@ -1,5 +1,6 @@
 using Toybox.Lang;
 
+(:glance)
 module TimeFormatter {
 
     // 13.5 -> "13:30". Negative or null -> "--:--".

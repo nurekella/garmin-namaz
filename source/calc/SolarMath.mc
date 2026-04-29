@@ -1,6 +1,7 @@
 using Toybox.Math;
 using Toybox.Lang;
 
+(:glance)
 module SolarMath {
 
     const RAD2DEG = 57.29577951308232d;

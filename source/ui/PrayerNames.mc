@@ -6,6 +6,7 @@ using Toybox.Lang;
 // (strings.xml -> strings-rus.xml -> strings-kaz.xml) does the work,
 // and we don't have to depend on System.LANGUAGE_* constants which
 // vary between API levels.
+(:glance)
 module PrayerNames {
 
     // Returns "kk" | "ru" | "en" — read from the active locale's

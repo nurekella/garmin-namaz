@@ -19,6 +19,7 @@ using Toybox.Math;
 // Time zone: hard-coded UTC+5 for KZ. If the watch is taken abroad we
 // still report tz=5 — for v1.0 KZ-only this is correct; v1.1 should
 // resolve tz from longitude or system clock.
+(:glance)
 class LocationProvider {
 
     static const KEY_LAST_LOCATION = "last_location";
