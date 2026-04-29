@@ -4,7 +4,7 @@
     <string id="LangCode">kk</string>
 
     <string id="PrayerFajr">Таң</string>
-    <string id="PrayerSunrise">Шурук</string>
+    <string id="PrayerSunrise">Күн</string>
     <string id="PrayerDhuhr">Бесін</string>
     <string id="PrayerAsr">Екінді</string>
     <string id="PrayerMaghrib">Ақшам</string>
@@ -37,7 +37,7 @@
     <string id="Off">Өшік</string>
     <string id="MinutesShort">мин</string>
     <string id="OffsetFajr">Таң (мин)</string>
-    <string id="OffsetSunrise">Шурук (мин)</string>
+    <string id="OffsetSunrise">Күн (мин)</string>
     <string id="OffsetDhuhr">Бесін (мин)</string>
     <string id="OffsetAsr">Екінді (мин)</string>
     <string id="OffsetMaghrib">Ақшам (мин)</string>

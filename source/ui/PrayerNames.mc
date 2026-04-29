@@ -2,16 +2,17 @@ using Toybox.WatchUi;
 using Toybox.Lang;
 
 // Localised display names for prayers and supporting labels.
+//
 // Resolution goes through Rez.Strings so the platform's locale picker
 // (strings.xml -> strings-rus.xml -> strings-kaz.xml) does the work,
 // and we don't have to depend on System.LANGUAGE_* constants which
 // vary between API levels.
-(:glance)
+//
+// Watch-app only — glance / background binaries can't link Rez at
+// runtime ("Could not access symbol 'Rez'", non-catchable). Those
+// contexts hardcode English inline (see GlanceView, BackgroundService).
 module PrayerNames {
 
-    // Returns "kk" | "ru" | "en" — read from the active locale's
-    // strings-XXX.xml LangCode entry. Use this when behaviour (not just
-    // text) needs to vary by language (e.g. month-name lookup).
     function language() {
         return WatchUi.loadResource(Rez.Strings.LangCode);
     }
@@ -38,7 +39,6 @@ module PrayerNames {
         return WatchUi.loadResource(Rez.Strings.GpsSearching);
     }
 
-    // 1..12 -> three-letter localised abbreviation (or "" out of range).
     function monthShort(month) {
         if (month < 1 || month > 12) { return ""; }
         var ids = [

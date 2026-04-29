@@ -16,7 +16,6 @@ using Toybox.WatchUi;
 //
 // Reference: https://www.staff.science.uu.nl/~gent0113/islam/ummalqura.htm
 //            (Kuwaiti algorithm formulas)
-(:glance, :background)
 module HijriDate {
 
     // Julian Day Number of 1 Muharram 1 AH = 16 July 622 CE (Julian).
@@ -106,6 +105,8 @@ module HijriDate {
     }
 
     // 1..12 -> localised month name via Rez.Strings.HijriMonthN.
+    // Watch-app context only — see PrayerNames.mc note about Rez in
+    // glance/background.
     function monthName(month) {
         if (month < 1 || month > 12) { return ""; }
         var ids = [

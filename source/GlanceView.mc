@@ -12,12 +12,12 @@ using Toybox.Lang;
 //   [LABEL  ASR]   17:48
 //                   1:23:45
 //
-// Left column: "NEXT" label above prayer name (bronze).
-// Right column: prayer time above live countdown.
-//
-// All heavy work (location resolve + prayer calculation) reuses the
-// modules from the main app. Glance memory budget is tighter than the
-// watch-app, but our calc is small enough to fit.
+// Glance binary runs in an isolated scope where the auto-generated
+// Rez symbol can be unavailable (manifests as "Could not access
+// symbol 'Rez'" at runtime, which is not catchable via try/catch
+// because it fails during symbol resolution, not function execution).
+// To stay reliable we hardcode English strings here rather than going
+// through PrayerNames + Rez. Localising the glance is queued for v1.1.
 (:glance)
 class GlanceView extends WatchUi.GlanceView {
 
@@ -39,7 +39,7 @@ class GlanceView extends WatchUi.GlanceView {
 
         var loc = _location.getCurrentLocation();
         if (loc == null) {
-            _drawCentered(dc, w, h, PrayerNames.gpsSearching(), Theme.COLOR_TEXT_DIM);
+            _drawCentered(dc, w, h, "GPS searching", Theme.COLOR_TEXT_DIM);
             return;
         }
 
@@ -51,8 +51,8 @@ class GlanceView extends WatchUi.GlanceView {
         var nowH = nowInfo.hour + nowInfo.min / 60.0d + nowInfo.sec / 3600.0d;
         var next = _calc.getNextPrayer(times, nowH);
 
-        // After Isha: roll to tomorrow's Fajr.
         if (next == null) {
+            // After Isha — roll to tomorrow's Fajr.
             var tMoment = Time.now().add(new Time.Duration(86400));
             var tInfo = Gregorian.info(tMoment, Time.FORMAT_SHORT);
             var tt = _calc.calculate(
@@ -71,19 +71,19 @@ class GlanceView extends WatchUi.GlanceView {
         }
 
         if (next == null) {
-            _drawCentered(dc, w, h, PrayerNames.gpsSearching(), Theme.COLOR_TEXT_DIM);
+            _drawCentered(dc, w, h, "GPS searching", Theme.COLOR_TEXT_DIM);
             return;
         }
 
         // Left column — label + name.
         dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
         dc.drawText(8, h / 2 - 18,
-                    Graphics.FONT_XTINY, PrayerNames.nextLabel(),
+                    Graphics.FONT_XTINY, "NEXT",
                     Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
 
         dc.setColor(Theme.COLOR_ACCENT, Graphics.COLOR_TRANSPARENT);
         dc.drawText(8, h / 2 + 12,
-                    Graphics.FONT_MEDIUM, PrayerNames.nameOf(next[:name]),
+                    Graphics.FONT_MEDIUM, _englishName(next[:name]),
                     Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
 
         // Right column — time + countdown.
@@ -96,6 +96,16 @@ class GlanceView extends WatchUi.GlanceView {
         dc.drawText(w - 8, h / 2 + 12,
                     Graphics.FONT_TINY, TimeFormatter.countdown(next[:secondsUntil]),
                     Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    function _englishName(sym) {
+        if (sym == :fajr)    { return "Fajr"; }
+        if (sym == :sunrise) { return "Sunrise"; }
+        if (sym == :dhuhr)   { return "Dhuhr"; }
+        if (sym == :asr)     { return "Asr"; }
+        if (sym == :maghrib) { return "Maghrib"; }
+        if (sym == :isha)    { return "Isha"; }
+        return "";
     }
 
     function _drawCentered(dc as Graphics.Dc, w, h, text, color) as Void {
