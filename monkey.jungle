@@ -1,0 +1,13 @@
+project.manifest = manifest.xml
+
+base.sourcePath = source
+base.resourcePath = resources
+
+# Round 416x416 (Epix Gen 2 / Fenix 7 Pro / FR965)
+epix2.resourcePath = $(base.resourcePath);resources-round-416x416
+epix2pro47mm.resourcePath = $(base.resourcePath);resources-round-416x416
+epix2pro51mm.resourcePath = $(base.resourcePath);resources-round-416x416
+fenix7.resourcePath = $(base.resourcePath);resources-round-416x416
+fenix7pro.resourcePath = $(base.resourcePath);resources-round-416x416
+fenix7x.resourcePath = $(base.resourcePath);resources-round-416x416
+fr965.resourcePath = $(base.resourcePath);resources-round-416x416
