@@ -1,4 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <strings>
     <string id="AppName">Namaz</string>
+    <string id="LangCode">en</string>
+
+    <string id="PrayerFajr">Fajr</string>
+    <string id="PrayerSunrise">Sunrise</string>
+    <string id="PrayerDhuhr">Dhuhr</string>
+    <string id="PrayerAsr">Asr</string>
+    <string id="PrayerMaghrib">Maghrib</string>
+    <string id="PrayerIsha">Isha</string>
+
+    <string id="NextPrayer">NEXT</string>
+    <string id="PrayerTime">Prayer time</string>
+    <string id="GpsSearching">GPS searching</string>
+
+    <string id="MonthJan">Jan</string>
+    <string id="MonthFeb">Feb</string>
+    <string id="MonthMar">Mar</string>
+    <string id="MonthApr">Apr</string>
+    <string id="MonthMay">May</string>
+    <string id="MonthJun">Jun</string>
+    <string id="MonthJul">Jul</string>
+    <string id="MonthAug">Aug</string>
+    <string id="MonthSep">Sep</string>
+    <string id="MonthOct">Oct</string>
+    <string id="MonthNov">Nov</string>
+    <string id="MonthDec">Dec</string>
 </strings>

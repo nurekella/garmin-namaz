@@ -1,4 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <strings>
     <string id="AppName">Намаз</string>
+    <string id="LangCode">kk</string>
+
+    <string id="PrayerFajr">Таң</string>
+    <string id="PrayerSunrise">Шурук</string>
+    <string id="PrayerDhuhr">Бесін</string>
+    <string id="PrayerAsr">Екінді</string>
+    <string id="PrayerMaghrib">Ақшам</string>
+    <string id="PrayerIsha">Құптан</string>
+
+    <string id="NextPrayer">КЕЛЕСІ</string>
+    <string id="PrayerTime">Намаз уақыты</string>
+    <string id="GpsSearching">GPS іздеу</string>
+
+    <string id="MonthJan">Қаң</string>
+    <string id="MonthFeb">Ақп</string>
+    <string id="MonthMar">Нау</string>
+    <string id="MonthApr">Сәу</string>
+    <string id="MonthMay">Мам</string>
+    <string id="MonthJun">Мау</string>
+    <string id="MonthJul">Шіл</string>
+    <string id="MonthAug">Там</string>
+    <string id="MonthSep">Қыр</string>
+    <string id="MonthOct">Қаз</string>
+    <string id="MonthNov">Қар</string>
+    <string id="MonthDec">Жел</string>
 </strings>

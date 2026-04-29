@@ -1,4 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <strings>
     <string id="AppName">Намаз</string>
+    <string id="LangCode">ru</string>
+
+    <string id="PrayerFajr">Фаджр</string>
+    <string id="PrayerSunrise">Восход</string>
+    <string id="PrayerDhuhr">Зухр</string>
+    <string id="PrayerAsr">Аср</string>
+    <string id="PrayerMaghrib">Магриб</string>
+    <string id="PrayerIsha">Иша</string>
+
+    <string id="NextPrayer">СЛЕДУЮЩИЙ</string>
+    <string id="PrayerTime">Время намаза</string>
+    <string id="GpsSearching">Поиск GPS</string>
+
+    <string id="MonthJan">Янв</string>
+    <string id="MonthFeb">Фев</string>
+    <string id="MonthMar">Мар</string>
+    <string id="MonthApr">Апр</string>
+    <string id="MonthMay">Май</string>
+    <string id="MonthJun">Июн</string>
+    <string id="MonthJul">Июл</string>
+    <string id="MonthAug">Авг</string>
+    <string id="MonthSep">Сен</string>
+    <string id="MonthOct">Окт</string>
+    <string id="MonthNov">Ноя</string>
+    <string id="MonthDec">Дек</string>
 </strings>
