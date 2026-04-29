@@ -24,7 +24,9 @@ class NamazDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function onMenu() as Lang.Boolean {
-        // TODO Stage 8: push settings menu here.
+        var menu = new SettingsMenu();
+        var delegate = new SettingsMenuDelegate(menu);
+        WatchUi.pushView(menu, delegate, WatchUi.SLIDE_LEFT);
         return true;
     }
 

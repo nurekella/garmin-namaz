@@ -26,4 +26,20 @@
     <string id="MonthOct">Қаз</string>
     <string id="MonthNov">Қар</string>
     <string id="MonthDec">Жел</string>
+
+    <string id="SettingsTitle">Баптаулар</string>
+    <string id="SettingAsr">Аср</string>
+    <string id="SettingCity">Қала</string>
+    <string id="SettingPreAlert">Алдын-ала</string>
+    <string id="AsrStandard">Стандарт</string>
+    <string id="AsrHanafi">Ханафи</string>
+    <string id="CityAuto">Авто (GPS)</string>
+    <string id="Off">Өшік</string>
+    <string id="MinutesShort">мин</string>
+    <string id="OffsetFajr">Таң (мин)</string>
+    <string id="OffsetSunrise">Шурук (мин)</string>
+    <string id="OffsetDhuhr">Бесін (мин)</string>
+    <string id="OffsetAsr">Екінді (мин)</string>
+    <string id="OffsetMaghrib">Ақшам (мин)</string>
+    <string id="OffsetIsha">Құптан (мин)</string>
 </strings>

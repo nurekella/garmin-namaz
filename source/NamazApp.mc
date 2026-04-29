@@ -10,11 +10,22 @@ class NamazApp extends Application.AppBase {
     function initialize() {
         AppBase.initialize();
         _location = new LocationProvider();
-        _calculator = new PrayerCalculator(
-            DumkMethod.params(),
-            DumkMethod.DEFAULT_ASR,
-            null  // user offsets — wired up in Stage 8 (settings)
-        );
+        _applySettings();
+    }
+
+    // Re-read Properties and rebuild the calculator. Called at start
+    // and whenever GCM pushes new settings. Cheap — calculator and
+    // locator hold no state worth preserving across rebuilds.
+    function _applySettings() as Void {
+        Settings.applyToLocator(_location);
+        _calculator = Settings.buildCalculator();
+    }
+
+    function onSettingsChanged() as Void {
+        _applySettings();
+        // Re-arm the temporal event with the new schedule.
+        PrayerNotifier.schedule(_calculator, _location);
+        WatchUi.requestUpdate();
     }
 
     function onStart(state as Lang.Dictionary?) as Void {
@@ -42,10 +53,8 @@ class NamazApp extends Application.AppBase {
     (:glance)
     function getGlanceView() {
         var location = new LocationProvider();
-        var calc = new PrayerCalculator(
-            DumkMethod.params(),
-            DumkMethod.DEFAULT_ASR,
-            null);
+        Settings.applyToLocator(location);
+        var calc = Settings.buildCalculator();
         return [new GlanceView(calc, location)];
     }
 }

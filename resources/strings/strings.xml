@@ -26,4 +26,20 @@
     <string id="MonthOct">Oct</string>
     <string id="MonthNov">Nov</string>
     <string id="MonthDec">Dec</string>
+
+    <string id="SettingsTitle">Settings</string>
+    <string id="SettingAsr">Asr method</string>
+    <string id="SettingCity">City</string>
+    <string id="SettingPreAlert">Pre-alert</string>
+    <string id="AsrStandard">Standard</string>
+    <string id="AsrHanafi">Hanafi</string>
+    <string id="CityAuto">Auto (GPS)</string>
+    <string id="Off">Off</string>
+    <string id="MinutesShort">min</string>
+    <string id="OffsetFajr">Fajr offset</string>
+    <string id="OffsetSunrise">Sunrise offset</string>
+    <string id="OffsetDhuhr">Dhuhr offset</string>
+    <string id="OffsetAsr">Asr offset</string>
+    <string id="OffsetMaghrib">Maghrib offset</string>
+    <string id="OffsetIsha">Isha offset</string>
 </strings>

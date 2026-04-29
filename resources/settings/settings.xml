@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+
+    <properties>
+        <property id="asrFactor" type="number">2</property>
+        <!-- City index into Cities.KAZAKHSTAN (0..15). -1 = auto (GPS + cache + Almaty fallback). -->
+        <property id="manualCityIdx" type="number">-1</property>
+        <property id="offsetFajr"    type="number">0</property>
+        <property id="offsetSunrise" type="number">0</property>
+        <property id="offsetDhuhr"   type="number">0</property>
+        <property id="offsetAsr"     type="number">0</property>
+        <property id="offsetMaghrib" type="number">0</property>
+        <property id="offsetIsha"    type="number">0</property>
+        <property id="prealertMin"   type="number">0</property>
+    </properties>
+
+    <settings>
+        <setting propertyKey="@Properties.asrFactor" title="@Strings.SettingAsr">
+            <settingConfig type="list">
+                <listEntry value="1">@Strings.AsrStandard</listEntry>
+                <listEntry value="2">@Strings.AsrHanafi</listEntry>
+            </settingConfig>
+        </setting>
+
+        <setting propertyKey="@Properties.manualCityIdx" title="@Strings.SettingCity">
+            <settingConfig type="list">
+                <listEntry value="-1">@Strings.CityAuto</listEntry>
+                <listEntry value="0">Almaty</listEntry>
+                <listEntry value="1">Astana</listEntry>
+                <listEntry value="2">Shymkent</listEntry>
+                <listEntry value="3">Karaganda</listEntry>
+                <listEntry value="4">Aktobe</listEntry>
+                <listEntry value="5">Taraz</listEntry>
+                <listEntry value="6">Pavlodar</listEntry>
+                <listEntry value="7">Oskemen</listEntry>
+                <listEntry value="8">Semey</listEntry>
+                <listEntry value="9">Atyrau</listEntry>
+                <listEntry value="10">Kostanay</listEntry>
+                <listEntry value="11">Kyzylorda</listEntry>
+                <listEntry value="12">Uralsk</listEntry>
+                <listEntry value="13">Petropavl</listEntry>
+                <listEntry value="14">Aktau</listEntry>
+                <listEntry value="15">Turkestan</listEntry>
+            </settingConfig>
+        </setting>
+
+        <setting propertyKey="@Properties.prealertMin" title="@Strings.SettingPreAlert">
+            <settingConfig type="list">
+                <listEntry value="0">@Strings.Off</listEntry>
+                <listEntry value="5">5 @Strings.MinutesShort</listEntry>
+                <listEntry value="10">10 @Strings.MinutesShort</listEntry>
+                <listEntry value="15">15 @Strings.MinutesShort</listEntry>
+            </settingConfig>
+        </setting>
+
+        <setting propertyKey="@Properties.offsetFajr" title="@Strings.OffsetFajr">
+            <settingConfig type="numeric" min="-9" max="9"/>
+        </setting>
+        <setting propertyKey="@Properties.offsetSunrise" title="@Strings.OffsetSunrise">
+            <settingConfig type="numeric" min="-9" max="9"/>
+        </setting>
+        <setting propertyKey="@Properties.offsetDhuhr" title="@Strings.OffsetDhuhr">
+            <settingConfig type="numeric" min="-9" max="9"/>
+        </setting>
+        <setting propertyKey="@Properties.offsetAsr" title="@Strings.OffsetAsr">
+            <settingConfig type="numeric" min="-9" max="9"/>
+        </setting>
+        <setting propertyKey="@Properties.offsetMaghrib" title="@Strings.OffsetMaghrib">
+            <settingConfig type="numeric" min="-9" max="9"/>
+        </setting>
+        <setting propertyKey="@Properties.offsetIsha" title="@Strings.OffsetIsha">
+            <settingConfig type="numeric" min="-9" max="9"/>
+        </setting>
+    </settings>
+
+</resources>

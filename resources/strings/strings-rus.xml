@@ -26,4 +26,20 @@
     <string id="MonthOct">Окт</string>
     <string id="MonthNov">Ноя</string>
     <string id="MonthDec">Дек</string>
+
+    <string id="SettingsTitle">Настройки</string>
+    <string id="SettingAsr">Аср</string>
+    <string id="SettingCity">Город</string>
+    <string id="SettingPreAlert">Предупреждение</string>
+    <string id="AsrStandard">Стандарт</string>
+    <string id="AsrHanafi">Ханафи</string>
+    <string id="CityAuto">Авто (GPS)</string>
+    <string id="Off">Выкл</string>
+    <string id="MinutesShort">мин</string>
+    <string id="OffsetFajr">Фаджр (мин)</string>
+    <string id="OffsetSunrise">Восход (мин)</string>
+    <string id="OffsetDhuhr">Зухр (мин)</string>
+    <string id="OffsetAsr">Аср (мин)</string>
+    <string id="OffsetMaghrib">Магриб (мин)</string>
+    <string id="OffsetIsha">Иша (мин)</string>
 </strings>

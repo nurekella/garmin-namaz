@@ -14,11 +14,13 @@ class NamazView extends WatchUi.View {
     static const Y_DATE         = 58;
     static const Y_NEXT_LABEL   = 110;
     static const Y_NEXT_NAME    = 145;
-    static const Y_COUNTDOWN    = 200;
-    static const Y_LIST_TOP     = 270;
-    static const ROW_HEIGHT     = 42;
-    static const COL1_X         = 110;
-    static const COL2_X         = 306;
+    static const Y_COUNTDOWN    = 198;
+    static const Y_LIST_TOP     = 268;
+    static const ROW_HEIGHT     = 38;
+    // Columns pulled inward — at y≈345 the round face is only ~260 px
+    // wide, so text centred at x=110 / x=306 clips on "Maghrib".
+    static const COL1_X         = 130;
+    static const COL2_X         = 286;
 
     var _calc;
     var _location;
@@ -137,13 +139,14 @@ class NamazView extends WatchUi.View {
         // Name
         dc.setColor(Theme.COLOR_ACCENT, Graphics.COLOR_TRANSPARENT);
         dc.drawText(Theme.CENTER_X, Y_NEXT_NAME,
-                    Graphics.FONT_LARGE, name,
+                    Graphics.FONT_SMALL, name,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
-        // Countdown (chunky numerics)
+        // Countdown — FONT_NUMBER_MILD keeps it slim enough to leave
+        // room for the prayer grid below.
         dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
         dc.drawText(Theme.CENTER_X, Y_COUNTDOWN,
-                    Graphics.FONT_NUMBER_MEDIUM, TimeFormatter.countdown(secondsUntil),
+                    Graphics.FONT_NUMBER_MILD, TimeFormatter.countdown(secondsUntil),
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
@@ -174,8 +177,8 @@ class NamazView extends WatchUi.View {
 
             dc.setColor(color, Graphics.COLOR_TRANSPARENT);
             dc.drawText(x, y,
-                        Graphics.FONT_TINY,
-                        PrayerNames.nameOf(sym) + "  " + TimeFormatter.hhmm(time),
+                        Graphics.FONT_XTINY,
+                        PrayerNames.nameOf(sym) + " " + TimeFormatter.hhmm(time),
                         Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         }
     }
