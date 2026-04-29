@@ -1,6 +1,6 @@
 project.manifest = manifest.xml
 
-base.sourcePath = source
+base.sourcePath = source;tests
 base.resourcePath = resources
 
 # Round 416x416 (Epix Gen 2 / Fenix 7 Pro / FR965)

@@ -52,7 +52,8 @@ Write-Host "Loading $prg on $Device ..." -ForegroundColor Cyan
 Push-Location $PSScriptRoot
 try {
     if ($Test) {
-        & $monkeydo $prg $Device -t
+        # On Windows monkeydo expects /t (not -t). monkeydo.bat strips the slash internally.
+        & $monkeydo $prg $Device "/t"
     } else {
         & $monkeydo $prg $Device
     }
