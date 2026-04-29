@@ -42,4 +42,17 @@
     <string id="OffsetAsr">Екінді (мин)</string>
     <string id="OffsetMaghrib">Ақшам (мин)</string>
     <string id="OffsetIsha">Құптан (мин)</string>
+
+    <string id="HijriMonth1">Мұхаррам</string>
+    <string id="HijriMonth2">Сафар</string>
+    <string id="HijriMonth3">Рабиғ-уль-әууәл</string>
+    <string id="HijriMonth4">Рабиғ-уль-ахир</string>
+    <string id="HijriMonth5">Жұмад-уль-әууәл</string>
+    <string id="HijriMonth6">Жұмад-уль-ахир</string>
+    <string id="HijriMonth7">Ражаб</string>
+    <string id="HijriMonth8">Шағбан</string>
+    <string id="HijriMonth9">Рамазан</string>
+    <string id="HijriMonth10">Шәууал</string>
+    <string id="HijriMonth11">Зул-қағда</string>
+    <string id="HijriMonth12">Зул-хижжа</string>
 </strings>

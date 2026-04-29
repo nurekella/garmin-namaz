@@ -42,4 +42,17 @@
     <string id="OffsetAsr">Аср (мин)</string>
     <string id="OffsetMaghrib">Магриб (мин)</string>
     <string id="OffsetIsha">Иша (мин)</string>
+
+    <string id="HijriMonth1">Мухаррам</string>
+    <string id="HijriMonth2">Сафар</string>
+    <string id="HijriMonth3">Раби I</string>
+    <string id="HijriMonth4">Раби II</string>
+    <string id="HijriMonth5">Джумада I</string>
+    <string id="HijriMonth6">Джумада II</string>
+    <string id="HijriMonth7">Раджаб</string>
+    <string id="HijriMonth8">Шаабан</string>
+    <string id="HijriMonth9">Рамадан</string>
+    <string id="HijriMonth10">Шавваль</string>
+    <string id="HijriMonth11">Зуль-Када</string>
+    <string id="HijriMonth12">Зуль-Хиджа</string>
 </strings>

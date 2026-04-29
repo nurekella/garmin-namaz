@@ -42,4 +42,17 @@
     <string id="OffsetAsr">Asr offset</string>
     <string id="OffsetMaghrib">Maghrib offset</string>
     <string id="OffsetIsha">Isha offset</string>
+
+    <string id="HijriMonth1">Muharram</string>
+    <string id="HijriMonth2">Safar</string>
+    <string id="HijriMonth3">Rabi I</string>
+    <string id="HijriMonth4">Rabi II</string>
+    <string id="HijriMonth5">Jumada I</string>
+    <string id="HijriMonth6">Jumada II</string>
+    <string id="HijriMonth7">Rajab</string>
+    <string id="HijriMonth8">Shaban</string>
+    <string id="HijriMonth9">Ramadan</string>
+    <string id="HijriMonth10">Shawwal</string>
+    <string id="HijriMonth11">Dhul-Qadah</string>
+    <string id="HijriMonth12">Dhul-Hijjah</string>
 </strings>

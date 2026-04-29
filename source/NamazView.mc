@@ -11,7 +11,8 @@ class NamazView extends WatchUi.View {
     // Layout — y-coordinates for the 416×416 round face. The screen
     // narrows at top and bottom; we keep critical text inside the
     // inscribed square (~y=60..356).
-    static const Y_DATE         = 58;
+    static const Y_DATE         = 50;
+    static const Y_DATE_HIJRI   = 78;
     static const Y_NEXT_LABEL   = 110;
     static const Y_NEXT_NAME    = 145;
     static const Y_COUNTDOWN    = 198;
@@ -104,10 +105,18 @@ class NamazView extends WatchUi.View {
 
     function _drawDate(dc as Graphics.Dc, nowInfo) as Void {
         var monthStr = PrayerNames.monthShort(nowInfo.month);
-        var dateStr = nowInfo.day + " " + monthStr + " " + nowInfo.year;
+        var dateStr  = nowInfo.day + " " + monthStr + " " + nowInfo.year;
+
         dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
         dc.drawText(Theme.CENTER_X, Y_DATE,
                     Graphics.FONT_TINY, dateStr,
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        var h = HijriDate.fromGregorian(nowInfo.year, nowInfo.month, nowInfo.day);
+        var hStr = h[:day] + " " + HijriDate.monthName(h[:month]) + " " + h[:year];
+        dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, Y_DATE_HIJRI,
+                    Graphics.FONT_XTINY, hStr,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
