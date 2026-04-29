@@ -13,6 +13,8 @@
         <property id="offsetMaghrib" type="number">0</property>
         <property id="offsetIsha"    type="number">0</property>
         <property id="prealertMin"   type="number">0</property>
+        <!-- Language override: 0=auto, 1=kk, 2=ru, 3=en. -->
+        <property id="langIdx"       type="number">0</property>
     </properties>
 
     <settings>
@@ -71,6 +73,14 @@
         </setting>
         <setting propertyKey="@Properties.offsetIsha" title="@Strings.OffsetIsha">
             <settingConfig type="numeric" min="-9" max="9"/>
+        </setting>
+        <setting propertyKey="@Properties.langIdx" title="Language">
+            <settingConfig type="list">
+                <listEntry value="0">Auto</listEntry>
+                <listEntry value="1">Қазақша</listEntry>
+                <listEntry value="2">Русский</listEntry>
+                <listEntry value="3">English</listEntry>
+            </settingConfig>
         </setting>
     </settings>
 

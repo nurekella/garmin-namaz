@@ -2,11 +2,15 @@ using Toybox.WatchUi;
 using Toybox.Application;
 using Toybox.Lang;
 
-// On-watch quick-settings menu. Entered via the watch's Menu button.
-// v1.0 carries only the Asr-method toggle (Hanafi <-> Standard) since
-// the full settings surface (city, offsets, pre-alert) is comfortably
-// edited via Garmin Connect Mobile, and the watch's vertical list
-// is awkward for a 16-city dropdown.
+// On-watch settings menu. Entered via the watch's Menu button (long-press UP).
+// Surface (top-level Menu2):
+//   Аср        — toggles Hanafi <-> Standard
+//   Қала       — opens city picker (Auto + 16 cities)
+//   Алдын-ала  — cycles Off / 5 / 10 / 15 minutes
+//   Offset     — opens per-prayer offset submenu (each cycles -9..+9)
+//
+// Settings are written to Application.Properties; the app re-applies via
+// onSettingsChanged().
 class SettingsMenu extends WatchUi.Menu2 {
 
     function initialize() {
@@ -15,24 +19,60 @@ class SettingsMenu extends WatchUi.Menu2 {
         });
         addItem(new WatchUi.MenuItem(
             WatchUi.loadResource(Rez.Strings.SettingAsr),
-            _asrSubLabel(),
-            :asr,
-            null
-        ));
+            _asrSubLabel(), :asr, null));
+        addItem(new WatchUi.MenuItem(
+            WatchUi.loadResource(Rez.Strings.SettingCity),
+            _citySubLabel(), :city, null));
+        addItem(new WatchUi.MenuItem(
+            WatchUi.loadResource(Rez.Strings.SettingPreAlert),
+            _prealertSubLabel(), :prealert, null));
+        addItem(new WatchUi.MenuItem(
+            "Language", _langSubLabel(), :lang, null));
+        addItem(new WatchUi.MenuItem(
+            "Offset", "", :offsets, null));
     }
 
-    function refreshAsrSubLabel() as Void {
-        var item = getItem(0);
-        if (item != null) {
-            item.setSubLabel(_asrSubLabel());
-        }
+    function refreshSubLabels() as Void {
+        var i;
+        i = getItem(0); if (i != null) { i.setSubLabel(_asrSubLabel()); }
+        i = getItem(1); if (i != null) { i.setSubLabel(_citySubLabel()); }
+        i = getItem(2); if (i != null) { i.setSubLabel(_prealertSubLabel()); }
+        i = getItem(3); if (i != null) { i.setSubLabel(_langSubLabel()); }
+    }
+
+    function _langSubLabel() as Lang.String {
+        var v = Application.Properties.getValue("langIdx");
+        var idx = (v == null) ? 0 : v.toNumber();
+        if (idx == 1) { return "Қазақша"; }
+        if (idx == 2) { return "Русский"; }
+        if (idx == 3) { return "English"; }
+        return "Auto";
     }
 
     function _asrSubLabel() as Lang.String {
-        var key = (Settings.asrFactor() == 2)
-            ? Rez.Strings.AsrHanafi
-            : Rez.Strings.AsrStandard;
+        var key = (Settings.asrFactor() == 2) ? Rez.Strings.AsrHanafi : Rez.Strings.AsrStandard;
         return WatchUi.loadResource(key);
+    }
+
+    function _citySubLabel() as Lang.String {
+        var idx = _cityIdx();
+        if (idx < 0) {
+            return WatchUi.loadResource(Rez.Strings.CityAuto);
+        }
+        var lang = WatchUi.loadResource(Rez.Strings.LangCode);
+        return Cities.localizedName(Cities.all()[idx], lang);
+    }
+
+    function _prealertSubLabel() as Lang.String {
+        var m = Settings.prealertMinutes();
+        if (m <= 0) { return WatchUi.loadResource(Rez.Strings.Off); }
+        return m + " " + WatchUi.loadResource(Rez.Strings.MinutesShort);
+    }
+
+    function _cityIdx() as Lang.Number {
+        var v = Application.Properties.getValue("manualCityIdx");
+        if (v == null) { return -1; }
+        return v.toNumber();
     }
 }
 
@@ -46,18 +86,184 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function onSelect(item) as Void {
-        if (item.getId() == :asr) {
+        var id = item.getId();
+        if (id == :asr) {
             var current = Settings.asrFactor();
             Application.Properties.setValue("asrFactor", current == 2 ? 1 : 2);
-            // Properties.setValue does NOT auto-fire onSettingsChanged
-            // (that is GCM-only). Push the change through manually.
-            var app = Application.getApp();
-            if (app != null && app has :onSettingsChanged) {
-                app.onSettingsChanged();
-            }
-            _menu.refreshAsrSubLabel();
-            WatchUi.requestUpdate();
+            _applyAndRefresh();
+        } else if (id == :city) {
+            var menu = new CityPickerMenu();
+            WatchUi.pushView(menu, new CityPickerDelegate(_menu), WatchUi.SLIDE_LEFT);
+        } else if (id == :prealert) {
+            // cycle 0 -> 5 -> 10 -> 15 -> 0
+            var cur = Settings.prealertMinutes();
+            var next = 0;
+            if (cur == 0)      { next = 5; }
+            else if (cur == 5) { next = 10; }
+            else if (cur == 10) { next = 15; }
+            else                { next = 0; }
+            Application.Properties.setValue("prealertMin", next);
+            _applyAndRefresh();
+        } else if (id == :lang) {
+            var v = Application.Properties.getValue("langIdx");
+            var idx = (v == null) ? 0 : v.toNumber();
+            idx = (idx + 1) % 4;
+            Application.Properties.setValue("langIdx", idx);
+            _applyAndRefresh();
+        } else if (id == :offsets) {
+            var menu = new OffsetsMenu();
+            WatchUi.pushView(menu, new OffsetsDelegate(menu), WatchUi.SLIDE_LEFT);
         }
+    }
+
+    function onBack() as Void {
+        WatchUi.popView(WatchUi.SLIDE_RIGHT);
+    }
+
+    function _applyAndRefresh() as Void {
+        var app = Application.getApp();
+        if (app != null && app has :onSettingsChanged) {
+            app.onSettingsChanged();
+        }
+        _menu.refreshSubLabels();
+        WatchUi.requestUpdate();
+    }
+}
+
+// ---- City picker -----------------------------------------------------
+
+class CityPickerMenu extends WatchUi.Menu2 {
+
+    function initialize() {
+        Menu2.initialize({
+            :title => WatchUi.loadResource(Rez.Strings.SettingCity)
+        });
+        var lang = WatchUi.loadResource(Rez.Strings.LangCode);
+
+        addItem(new WatchUi.MenuItem(
+            WatchUi.loadResource(Rez.Strings.CityAuto), null, :auto, null));
+
+        var cities = Cities.all();
+        for (var i = 0; i < cities.size(); i++) {
+            addItem(new WatchUi.MenuItem(
+                Cities.localizedName(cities[i], lang), null, i, null));
+        }
+    }
+}
+
+class CityPickerDelegate extends WatchUi.Menu2InputDelegate {
+
+    var _parent;
+
+    function initialize(parent) {
+        Menu2InputDelegate.initialize();
+        _parent = parent;
+    }
+
+    function onSelect(item) as Void {
+        var id = item.getId();
+        var idx;
+        if (id == :auto) {
+            idx = -1;
+        } else if (id instanceof Lang.Number) {
+            idx = id;
+        } else {
+            return;
+        }
+        Application.Properties.setValue("manualCityIdx", idx);
+        var app = Application.getApp();
+        if (app != null && app has :onSettingsChanged) {
+            app.onSettingsChanged();
+        }
+        if (_parent != null && _parent has :refreshSubLabels) {
+            _parent.refreshSubLabels();
+        }
+        WatchUi.popView(WatchUi.SLIDE_RIGHT);
+    }
+
+    function onBack() as Void {
+        WatchUi.popView(WatchUi.SLIDE_RIGHT);
+    }
+}
+
+// ---- Per-prayer offset submenu ---------------------------------------
+
+class OffsetsMenu extends WatchUi.Menu2 {
+
+    static const PRAYERS = [
+        [:fajr,    "offsetFajr",    Rez.Strings.OffsetFajr],
+        [:sunrise, "offsetSunrise", Rez.Strings.OffsetSunrise],
+        [:dhuhr,   "offsetDhuhr",   Rez.Strings.OffsetDhuhr],
+        [:asr,     "offsetAsr",     Rez.Strings.OffsetAsr],
+        [:maghrib, "offsetMaghrib", Rez.Strings.OffsetMaghrib],
+        [:isha,    "offsetIsha",    Rez.Strings.OffsetIsha]
+    ];
+
+    function initialize() {
+        Menu2.initialize({ :title => "Offset" });
+        for (var i = 0; i < PRAYERS.size(); i++) {
+            addItem(new WatchUi.MenuItem(
+                WatchUi.loadResource(PRAYERS[i][2]),
+                _formatVal(_read(PRAYERS[i][1])),
+                PRAYERS[i][0], null));
+        }
+    }
+
+    function refreshSubLabels() as Void {
+        for (var i = 0; i < PRAYERS.size(); i++) {
+            var item = getItem(i);
+            if (item != null) {
+                item.setSubLabel(_formatVal(_read(PRAYERS[i][1])));
+            }
+        }
+    }
+
+    function _read(key) as Lang.Number {
+        var v = Application.Properties.getValue(key);
+        if (v == null) { return 0; }
+        return v.toNumber();
+    }
+
+    function _formatVal(v) as Lang.String {
+        if (v > 0) { return "+" + v; }
+        return "" + v;
+    }
+}
+
+class OffsetsDelegate extends WatchUi.Menu2InputDelegate {
+
+    var _menu;
+
+    function initialize(menu) {
+        Menu2InputDelegate.initialize();
+        _menu = menu;
+    }
+
+    function onSelect(item) as Void {
+        var sym = item.getId();
+        // Find prop key for this prayer.
+        var key = null;
+        for (var i = 0; i < OffsetsMenu.PRAYERS.size(); i++) {
+            if (OffsetsMenu.PRAYERS[i][0] == sym) {
+                key = OffsetsMenu.PRAYERS[i][1];
+                break;
+            }
+        }
+        if (key == null) { return; }
+
+        // Cycle -9 .. +9 by +1, wrap.
+        var v = Application.Properties.getValue(key);
+        if (v == null) { v = 0; } else { v = v.toNumber(); }
+        v += 1;
+        if (v > 9) { v = -9; }
+        Application.Properties.setValue(key, v);
+
+        var app = Application.getApp();
+        if (app != null && app has :onSettingsChanged) {
+            app.onSettingsChanged();
+        }
+        _menu.refreshSubLabels();
+        WatchUi.requestUpdate();
     }
 
     function onBack() as Void {

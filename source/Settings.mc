@@ -1,5 +1,6 @@
 using Toybox.Application;
 using Toybox.Lang;
+using Toybox.WatchUi;
 
 // Reads user preferences from Application.Properties (managed via
 // Garmin Connect Mobile / Settings on watch) and projects them onto
@@ -10,6 +11,22 @@ using Toybox.Lang;
 // applied configuration.
 (:background, :glance)
 module Settings {
+
+    // "kk" / "ru" / "en" — falls back to the system Rez locale when user
+    // chose "auto" or never opened settings.
+    function language() {
+        var v = Application.Properties.getValue("langIdx");
+        var idx = (v == null) ? 0 : v.toNumber();
+        if (idx == 1) { return "kk"; }
+        if (idx == 2) { return "ru"; }
+        if (idx == 3) { return "en"; }
+        // 0 / unknown -> system locale via Rez.
+        var sys = WatchUi.loadResource(Rez.Strings.LangCode);
+        if (sys != null && (sys.equals("kk") || sys.equals("ru") || sys.equals("en"))) {
+            return sys;
+        }
+        return "en";
+    }
 
     function asrFactor() {
         var v = Application.Properties.getValue("asrFactor");

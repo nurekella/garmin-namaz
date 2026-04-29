@@ -12,10 +12,10 @@ class NamazView extends WatchUi.View {
     // narrows at top and bottom; we keep critical text inside the
     // inscribed square (~y=60..356).
     static const Y_DATE         = 50;
-    static const Y_DATE_HIJRI   = 78;
-    static const Y_NEXT_LABEL   = 110;
-    static const Y_NEXT_NAME    = 145;
-    static const Y_COUNTDOWN    = 198;
+    static const Y_DATE_HIJRI   = 88;
+    static const Y_NEXT_ROW     = 130;
+    static const Y_COUNTDOWN    = 185;
+    static const NEXT_GAP       = 8;
     static const Y_LIST_TOP     = 268;
     static const ROW_HEIGHT     = 38;
     // Columns pulled inward — at y≈345 the round face is only ~260 px
@@ -99,7 +99,7 @@ class NamazView extends WatchUi.View {
     function _drawSearching(dc as Graphics.Dc) as Void {
         dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
         dc.drawText(Theme.CENTER_X, Theme.CENTER_Y,
-                    Graphics.FONT_MEDIUM, PrayerNames.gpsSearching(),
+                    Fonts.medium(), PrayerNames.gpsSearching(),
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
@@ -109,14 +109,14 @@ class NamazView extends WatchUi.View {
 
         dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
         dc.drawText(Theme.CENTER_X, Y_DATE,
-                    Graphics.FONT_TINY, dateStr,
+                    Fonts.tiny(), dateStr,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         var h = HijriDate.fromGregorian(nowInfo.year, nowInfo.month, nowInfo.day);
         var hStr = h[:day] + " " + HijriDate.monthName(h[:month]) + " " + h[:year];
         dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
         dc.drawText(Theme.CENTER_X, Y_DATE_HIJRI,
-                    Graphics.FONT_XTINY, hStr,
+                    Fonts.xtiny(), hStr,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
@@ -139,17 +139,24 @@ class NamazView extends WatchUi.View {
             secondsUntil = tom;
         }
 
-        // Label
-        dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, Y_NEXT_LABEL,
-                    Graphics.FONT_TINY, PrayerNames.nextLabel(),
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        // "NEXT  Asr" on a single baseline. FONT_TINY and FONT_SMALL have
+        // different heights, so VCENTER alone leaves them looking off — we
+        // align by baseline using each font's ascent.
+        var labelFont = Fonts.tiny();
+        var nameFont  = Fonts.small();
+        var labelH = dc.getFontHeight(labelFont);
+        var nameH  = dc.getFontHeight(nameFont);
+        var baselineY = Y_NEXT_ROW + nameH / 2;
 
-        // Name
+        dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X - NEXT_GAP, baselineY - labelH,
+                    labelFont, PrayerNames.nextLabel(),
+                    Graphics.TEXT_JUSTIFY_RIGHT);
+
         dc.setColor(Theme.COLOR_ACCENT, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, Y_NEXT_NAME,
-                    Graphics.FONT_SMALL, name,
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(Theme.CENTER_X + NEXT_GAP, baselineY - nameH,
+                    nameFont, name,
+                    Graphics.TEXT_JUSTIFY_LEFT);
 
         // Countdown — FONT_NUMBER_MILD keeps it slim enough to leave
         // room for the prayer grid below.
@@ -186,7 +193,7 @@ class NamazView extends WatchUi.View {
 
             dc.setColor(color, Graphics.COLOR_TRANSPARENT);
             dc.drawText(x, y,
-                        Graphics.FONT_XTINY,
+                        Fonts.xtiny(),
                         PrayerNames.nameOf(sym) + " " + TimeFormatter.hhmm(time),
                         Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         }
@@ -195,8 +202,8 @@ class NamazView extends WatchUi.View {
     function _colorFor(sym, nextSym, time, nowH) {
         if (time == null)        { return Theme.COLOR_TEXT_MUTED; }
         if (sym == nextSym)       { return Theme.COLOR_ACCENT; }
-        if (time < nowH)          { return Theme.COLOR_TEXT_MUTED; }
-        return Theme.COLOR_TEXT_DIM;
+        if (time < nowH)          { return Theme.COLOR_TEXT_DIM; }
+        return Theme.COLOR_TEXT;
     }
 
     function _tomorrowFajr(nowInfo) {

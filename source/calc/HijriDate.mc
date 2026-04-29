@@ -104,19 +104,23 @@ module HijriDate {
         return jd;
     }
 
-    // 1..12 -> localised month name via Rez.Strings.HijriMonthN.
-    // Watch-app context only — see PrayerNames.mc note about Rez in
-    // glance/background.
+    // 1..12 -> localised month name. Honours Settings.language() so the
+    // manual language switch overrides system locale.
+    const _MONTHS_KK = ["Мұхаррам","Сафар","Рабиғ-уль-әууәл","Рабиғ-уль-ахир",
+        "Жұмад-уль-әууәл","Жұмад-уль-ахир","Ражаб","Шағбан","Рамазан",
+        "Шәууал","Зул-қағда","Зул-хижжа"];
+    const _MONTHS_RU = ["Мухаррам","Сафар","Раби-уль-авваль","Раби-уль-ахир",
+        "Джумада-аль-уля","Джумада-аль-ахира","Раджаб","Шаабан","Рамадан",
+        "Шавваль","Зуль-каада","Зуль-хиджа"];
+    const _MONTHS_EN = ["Muharram","Safar","Rabi al-Awwal","Rabi al-Thani",
+        "Jumada al-Awwal","Jumada al-Thani","Rajab","Shaban","Ramadan",
+        "Shawwal","Dhul-Qadah","Dhul-Hijjah"];
+
     function monthName(month) {
         if (month < 1 || month > 12) { return ""; }
-        var ids = [
-            Rez.Strings.HijriMonth1,  Rez.Strings.HijriMonth2,
-            Rez.Strings.HijriMonth3,  Rez.Strings.HijriMonth4,
-            Rez.Strings.HijriMonth5,  Rez.Strings.HijriMonth6,
-            Rez.Strings.HijriMonth7,  Rez.Strings.HijriMonth8,
-            Rez.Strings.HijriMonth9,  Rez.Strings.HijriMonth10,
-            Rez.Strings.HijriMonth11, Rez.Strings.HijriMonth12
-        ];
-        return WatchUi.loadResource(ids[month - 1]);
+        var lang = Settings.language();
+        if (lang.equals("kk")) { return _MONTHS_KK[month - 1]; }
+        if (lang.equals("ru")) { return _MONTHS_RU[month - 1]; }
+        return _MONTHS_EN[month - 1];
     }
 }
