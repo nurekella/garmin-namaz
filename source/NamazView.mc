@@ -1,6 +1,7 @@
 using Toybox.WatchUi;
 using Toybox.Graphics;
 using Toybox.Application;
+using Toybox.Lang;
 
 class NamazView extends WatchUi.View {
 

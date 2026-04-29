@@ -1,4 +1,5 @@
 using Toybox.WatchUi;
+using Toybox.Lang;
 
 class NamazDelegate extends WatchUi.BehaviorDelegate {
 
