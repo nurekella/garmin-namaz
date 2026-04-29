@@ -153,16 +153,20 @@ module SolarMathTest {
 
     (:test)
     function testAsrAngle_Hanafi_AlmatySolstice(logger) {
-        // factor=2, lat=43.24°, decl=23.43° → atan(2 + tan(19.81°)) ≈ 67.0°
+        // factor=2, lat=43.24°, decl=23.43°.
+        // zenith_asr = atan(2 + tan(19.81°)) = atan(2.36025) = 67.04°
+        // altitude_asr = 90 - 67.04 = 22.96°
         var a = SolarMath.asrAngle(43.2389d, 23.43d, 2);
-        return _near(logger, a, 67.0d, 0.3d, "Asr Hanafi Almaty solstice");
+        return _near(logger, a, 22.96d, 0.3d, "Asr Hanafi altitude at Almaty solstice");
     }
 
     (:test)
     function testAsrAngle_Standard_AlmatySolstice(logger) {
-        // factor=1, lat=43.24°, decl=23.43° → atan(1 + tan(19.81°)) ≈ 53.7°
+        // factor=1, lat=43.24°, decl=23.43°.
+        // zenith_asr = atan(1 + tan(19.81°)) = atan(1.36025) = 53.69°
+        // altitude_asr = 90 - 53.69 = 36.31°
         var a = SolarMath.asrAngle(43.2389d, 23.43d, 1);
-        return _near(logger, a, 53.7d, 0.3d, "Asr Standard Almaty solstice");
+        return _near(logger, a, 36.31d, 0.3d, "Asr Standard altitude at Almaty solstice");
     }
 
     // ---------- Helpers ----------

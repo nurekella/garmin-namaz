@@ -99,12 +99,19 @@ module SolarMath {
         return rad2deg(Math.acos(cosH)) / 15.0d;
     }
 
+    // Sun altitude (degrees above horizon) at which Asr begins.
     // Hanafi: factor=2; Standard (Shafi/Maliki/Hanbali): factor=1.
-    // Returns altitude angle (degrees) at which Asr begins.
+    //
+    // Derivation: shadow at Asr = noon-shadow + factor * height
+    //   tan(zenith_asr) = factor + tan(|lat - decl|)
+    //   altitude_asr   = arccot(...) = atan(1/(factor + tan(|lat-decl|)))
+    //
+    // Returned altitude is suitable for `hourAngle(lat, decl, -altitude)`
+    // since hourAngle takes degrees BELOW horizon.
     function asrAngle(latitude, decl, factor) {
         var diff = latitude.toDouble() - decl.toDouble();
         if (diff < 0.0d) { diff = -diff; }
         var t = factor.toDouble() + Math.tan(deg2rad(diff));
-        return rad2deg(Math.atan(t));
+        return rad2deg(Math.atan(1.0d / t));
     }
 }
