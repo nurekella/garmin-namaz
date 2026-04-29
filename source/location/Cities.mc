@@ -7,7 +7,7 @@ using Toybox.Lang;
 // Names: :name_kk drops the "қаласы" suffix since context is always a
 // city. :name_ru uses the modern transliteration; :name_en is included
 // for the English UI locale.
-(:glance)
+(:glance, :background)
 module Cities {
 
     const FALLBACK_ID = "almaty";

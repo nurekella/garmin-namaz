@@ -4,7 +4,7 @@ using Toybox.Lang;
 // Visual identity constants. Colours target true-black AMOLED on Epix
 // Gen 2 — black background lets pixels shut off (battery + contrast).
 // All non-bg colours are warm to match the "calm dawn" tone we want.
-(:glance)
+(:glance, :background)
 module Theme {
 
     // Background — pixels off on AMOLED.

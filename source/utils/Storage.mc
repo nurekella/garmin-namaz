@@ -8,7 +8,7 @@ using Toybox.Lang;
 //
 // Watch-app limit: 8 KB per key, 128 KB total. Don't pass raw objects —
 // stick to primitives, Strings, Arrays, and Dictionaries of those.
-(:glance)
+(:glance, :background)
 module Storage {
 
     function get(key) {

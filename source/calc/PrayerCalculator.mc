@@ -12,7 +12,7 @@ using Toybox.Math;
 // At very high latitudes (typically > 48° in winter / > 60° in summer)
 // the sun may not reach the Fajr/Isha angles; in that case the entry is
 // `null`. A high-latitude correction layer can be added later (v1.1).
-(:glance)
+(:glance, :background)
 class PrayerCalculator {
 
     var _params;          // Dictionary, e.g. DumkMethod.params()

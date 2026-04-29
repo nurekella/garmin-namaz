@@ -11,7 +11,7 @@ using Toybox.Lang;
 // The `:offsets` dictionary bakes in the calibration. User-level per-prayer
 // offsets (from settings) are applied on top by PrayerCalculator and do
 // not replace these.
-(:glance)
+(:glance, :background)
 module DumkMethod {
 
     const ID              = "DUMK";

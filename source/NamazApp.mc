@@ -18,9 +18,19 @@ class NamazApp extends Application.AppBase {
     }
 
     function onStart(state as Lang.Dictionary?) as Void {
+        // Arm the next prayer-time vibration so it fires even after the
+        // app is backgrounded. PrayerNotifier handles the 5-min floor
+        // and rolls past prayers within it.
+        PrayerNotifier.schedule(_calculator, _location);
     }
 
     function onStop(state as Lang.Dictionary?) as Void {
+        // Leave the temporal event registered — that's the whole
+        // point of background scheduling. Don't clear it on stop.
+    }
+
+    function getServiceDelegate() {
+        return [new BackgroundService()];
     }
 
     function getInitialView() as [WatchUi.Views] or [WatchUi.Views, WatchUi.InputDelegates] {
