@@ -147,7 +147,7 @@ module FixedIshaMethod {
 module Methods {
     const IDS = ["DUMK", "MWL", "DIYANET", "EGYPT", "ISNA", "KARACHI",
                  "JAFARI", "UMM_AL_QURA", "TEHRAN", "FIXED_ISHA"];
-    const LABELS = ["ҚМДБ (KZ)", "MWL", "Diyanet (TR)", "Egyptian", "ISNA",
+    const LABELS = ["QMDB (KZ)", "MWL", "Diyanet (TR)", "Egyptian", "ISNA",
                     "Karachi", "Jafari", "Umm al-Qura", "Tehran", "Fixed Isha"];
 
     function paramsFor(id) {

@@ -81,15 +81,15 @@
         <setting propertyKey="@Properties.langIdx" title="Language">
             <settingConfig type="list">
                 <listEntry value="0">Auto</listEntry>
-                <listEntry value="1">Қазақша</listEntry>
-                <listEntry value="2">Русский</listEntry>
+                <listEntry value="1">Kazakh</listEntry>
+                <listEntry value="2">Russian</listEntry>
                 <listEntry value="3">English</listEntry>
             </settingConfig>
         </setting>
 
         <setting propertyKey="@Properties.methodIdx" title="Method">
             <settingConfig type="list">
-                <listEntry value="0">ҚМДБ (KZ)</listEntry>
+                <listEntry value="0">QMDB (KZ)</listEntry>
                 <listEntry value="1">Muslim World League</listEntry>
                 <listEntry value="2">Diyanet (Turkey)</listEntry>
                 <listEntry value="3">Egyptian</listEntry>

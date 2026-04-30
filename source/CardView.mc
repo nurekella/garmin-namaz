@@ -17,7 +17,7 @@ using Toybox.Lang;
 //   y=380  position dots — current card filled
 class CardView extends WatchUi.View {
 
-    static const ORDER = [:overview, :fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha];
+    static const ORDER = [:overview, :countdown, :fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha, :tahajjud];
 
     var _calc;
     var _location;
@@ -97,6 +97,8 @@ class CardView extends WatchUi.View {
 
         if (sym == :overview) {
             _drawOverview(dc, info, nowH);
+        } else if (sym == :countdown) {
+            _drawCountdown(dc, info, nowH);
         } else {
             _drawPrayer(dc, info, nowH, sym);
         }
@@ -109,14 +111,14 @@ class CardView extends WatchUi.View {
         var monthStr = PrayerNames.monthShort(info.month);
         var dateStr  = info.day + " " + monthStr + " " + info.year;
         dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 50,
-                    Fonts.tiny(), dateStr,
+        dc.drawText(Theme.CENTER_X, 44,
+                    Fonts.medium(), dateStr,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         var hd = HijriDate.fromGregorian(info.year, info.month, info.day);
         dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 80,
-                    Fonts.xtiny(),
+        dc.drawText(Theme.CENTER_X, 82,
+                    Fonts.small(),
                     hd[:day] + " " + HijriDate.monthName(hd[:month]) + " " + hd[:year],
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
@@ -124,29 +126,74 @@ class CardView extends WatchUi.View {
         var loc = _location.getCurrentLocation();
         var cityLabel = _resolveCityLabel(loc);
         dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 110,
-                    Fonts.xtiny(), cityLabel,
+        dc.drawText(Theme.CENTER_X, 116,
+                    Fonts.small(), cityLabel,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         // ---- 6 prayers ----
         var nextEntry = _calc.getNextPrayer(_times, nowH);
         var nextSym = (nextEntry != null) ? nextEntry[:name] : null;
-        var prayers = [:fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha];
+        var prayers = [:fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha, :tahajjud];
         var rowY = 152;
-        var rowH = 38;
+        var rowH = 34;
         for (var i = 0; i < prayers.size(); i++) {
             var sym = prayers[i];
             var t   = _times[sym];
             var color = _colorFor(sym, nextSym, t, nowH);
             dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-            // Name left, time right — ride the visual rail at center ±70.
-            dc.drawText(Theme.CENTER_X - 80, rowY + i * rowH,
-                        Fonts.xtiny(), PrayerNames.nameOf(sym),
+            dc.drawText(Theme.CENTER_X - 90, rowY + i * rowH,
+                        Fonts.tiny(), PrayerNames.nameOf(sym),
                         Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
-            dc.drawText(Theme.CENTER_X + 80, rowY + i * rowH,
-                        Fonts.xtiny(), TimeFormatter.hhmm(t),
+            dc.drawText(Theme.CENTER_X + 90, rowY + i * rowH,
+                        Fonts.tiny(), TimeFormatter.hhmm(t),
                         Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
         }
+    }
+
+    function _drawCountdown(dc as Graphics.Dc, info, nowH) as Void {
+        var nextEntry = _calc.getNextPrayer(_times, nowH);
+        var name; var time; var secsLeft;
+        if (nextEntry != null) {
+            name     = PrayerNames.nameOf(nextEntry[:name]);
+            time     = nextEntry[:time];
+            secsLeft = nextEntry[:secondsUntil];
+        } else {
+            // Past Isha — count to tomorrow's Fajr.
+            var tMoment = Time.now().add(new Time.Duration(86400));
+            var tInfo = Gregorian.info(tMoment, Time.FORMAT_SHORT);
+            var loc = _location.getCurrentLocation();
+            var tt = _calc.calculate(loc[:lat], loc[:lon],
+                tInfo.year, tInfo.month, tInfo.day, loc[:tz]);
+            var f = tt[:fajr];
+            if (f == null) { return; }
+            name     = PrayerNames.nameOf(:fajr);
+            time     = f;
+            secsLeft = (((24.0d - nowH) + f) * 3600.0d).toNumber();
+        }
+
+        dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, 70,
+                    Fonts.tiny(), PrayerNames.nextLabel(),
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        dc.setColor(Theme.COLOR_ACCENT, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, 120,
+                    Fonts.medium(), name,
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        // Hero countdown — biggest number font available.
+        dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, 220,
+                    Graphics.FONT_NUMBER_THAI_HOT,
+                    TimeFormatter.countdown(secsLeft),
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        // The actual prayer time itself, smaller.
+        dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, 320,
+                    Fonts.small(),
+                    "@ " + TimeFormatter.hhmm(time),
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
     function _drawPrayer(dc as Graphics.Dc, info, nowH, sym) as Void {

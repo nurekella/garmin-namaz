@@ -60,8 +60,8 @@ class SettingsMenu extends WatchUi.Menu2 {
     function _langSubLabel() as Lang.String {
         var v = Application.Properties.getValue("langIdx");
         var idx = (v == null) ? 0 : v.toNumber();
-        if (idx == 1) { return "Қазақша"; }
-        if (idx == 2) { return "Русский"; }
+        if (idx == 1) { return "Kazakh"; }
+        if (idx == 2) { return "Russian"; }
         if (idx == 3) { return "English"; }
         return "Auto";
     }
@@ -328,10 +328,7 @@ class LangPickerMenu extends WatchUi.Menu2 {
         Menu2.initialize({ :title => "Language" });
         var v = Application.Properties.getValue("langIdx");
         var cur = (v == null) ? 0 : v.toNumber();
-        var entries = [[0, "Auto"], [1, "Kazaksha"], [2, "Russian"], [3, "English"]];
-        // overwrite with localised names
-        entries[1][1] = "Қазақша";
-        entries[2][1] = "Русский";
+        var entries = [[0, "Auto"], [1, "Kazakh"], [2, "Russian"], [3, "English"]];
         for (var i = 0; i < entries.size(); i++) {
             addItem(new WatchUi.MenuItem(
                 entries[i][1],

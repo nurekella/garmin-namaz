@@ -10,15 +10,18 @@ module PrayerNames {
 
     const PRAYER_KK = {
         :fajr => "Таң", :sunrise => "Күн", :dhuhr => "Бесін",
-        :asr => "Екінді", :maghrib => "Ақшам", :isha => "Құптан"
+        :asr => "Екінді", :maghrib => "Ақшам", :isha => "Құптан",
+        :tahajjud => "Тәһәжжүд"
     };
     const PRAYER_RU = {
         :fajr => "Фаджр", :sunrise => "Восход", :dhuhr => "Зухр",
-        :asr => "Аср", :maghrib => "Магриб", :isha => "Иша"
+        :asr => "Аср", :maghrib => "Магриб", :isha => "Иша",
+        :tahajjud => "Тахаджуд"
     };
     const PRAYER_EN = {
         :fajr => "Fajr", :sunrise => "Sunrise", :dhuhr => "Dhuhr",
-        :asr => "Asr", :maghrib => "Maghrib", :isha => "Isha"
+        :asr => "Asr", :maghrib => "Maghrib", :isha => "Isha",
+        :tahajjud => "Tahajjud"
     };
 
     const NEXT_KK = "КЕЛЕСІ";

@@ -66,6 +66,16 @@ class PrayerCalculator {
             isha = (hIsha != null) ? solarNoon + hIsha : null;
         }
 
+        // Tahajjud — start of the last third of the night.
+        // Night = Maghrib(today) → Fajr(next day). We approximate the
+        // next-day Fajr as today's Fajr (varies < 2 min day-to-day).
+        var tahajjud = null;
+        if (maghrib != null && fajr != null) {
+            var nightLen = (24.0d - maghrib) + fajr;   // hours
+            tahajjud = maghrib + nightLen * 2.0d / 3.0d;
+            if (tahajjud >= 24.0d) { tahajjud -= 24.0d; }
+        }
+
         return {
             :fajr      => _withOffsets(fajr,    :fajr),
             :sunrise   => _withOffsets(sunrise, :sunrise),
@@ -73,6 +83,7 @@ class PrayerCalculator {
             :asr       => _withOffsets(asr,     :asr),
             :maghrib   => _withOffsets(maghrib, :maghrib),
             :isha      => _withOffsets(isha,    :isha),
+            :tahajjud  => tahajjud,
             :solarNoon => solarNoon
         };
     }
