@@ -105,9 +105,8 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item) as Void {
         var id = item.getId();
         if (id == :asr) {
-            var current = Settings.asrFactor();
-            Application.Properties.setValue("asrFactor", current == 2 ? 1 : 2);
-            _applyAndRefresh();
+            var menu = new AsrPickerMenu();
+            WatchUi.pushView(menu, new AsrPickerDelegate(_menu), WatchUi.SLIDE_LEFT);
         } else if (id == :city) {
             var menu = new CityPickerMenu();
             WatchUi.pushView(menu, new CityPickerDelegate(_menu), WatchUi.SLIDE_LEFT);
@@ -122,21 +121,15 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             Application.Properties.setValue("prealertMin", next);
             _applyAndRefresh();
         } else if (id == :method) {
-            var v = Application.Properties.getValue("methodIdx");
-            var idx = (v == null) ? 0 : v.toNumber();
-            idx = (idx + 1) % Methods.IDS.size();
-            Application.Properties.setValue("methodIdx", idx);
-            _applyAndRefresh();
+            var menu = new MethodPickerMenu();
+            WatchUi.pushView(menu, new MethodPickerDelegate(_menu), WatchUi.SLIDE_LEFT);
         } else if (id == :notify) {
             var cur = Settings.notificationsEnabled();
             Application.Properties.setValue("notify", !cur);
             _applyAndRefresh();
         } else if (id == :lang) {
-            var v = Application.Properties.getValue("langIdx");
-            var idx = (v == null) ? 0 : v.toNumber();
-            idx = (idx + 1) % 4;
-            Application.Properties.setValue("langIdx", idx);
-            _applyAndRefresh();
+            var menu = new LangPickerMenu();
+            WatchUi.pushView(menu, new LangPickerDelegate(_menu), WatchUi.SLIDE_LEFT);
         } else if (id == :offsets) {
             var menu = new OffsetsMenu();
             WatchUi.pushView(menu, new OffsetsDelegate(menu), WatchUi.SLIDE_LEFT);
@@ -296,4 +289,100 @@ class OffsetsDelegate extends WatchUi.Menu2InputDelegate {
     function onBack() as Void {
         WatchUi.popView(WatchUi.SLIDE_RIGHT);
     }
+}
+
+// ---- Asr picker ------------------------------------------------------
+
+class AsrPickerMenu extends WatchUi.Menu2 {
+    function initialize() {
+        Menu2.initialize({ :title => WatchUi.loadResource(Rez.Strings.SettingAsr) });
+        var cur = Settings.asrFactor();
+        addItem(new WatchUi.MenuItem(
+            WatchUi.loadResource(Rez.Strings.AsrStandard),
+            (cur == 1) ? "*" : null, 1, null));
+        addItem(new WatchUi.MenuItem(
+            WatchUi.loadResource(Rez.Strings.AsrHanafi),
+            (cur == 2) ? "*" : null, 2, null));
+    }
+}
+
+class AsrPickerDelegate extends WatchUi.Menu2InputDelegate {
+    var _parent;
+    function initialize(parent) { Menu2InputDelegate.initialize(); _parent = parent; }
+    function onSelect(item) as Void {
+        var id = item.getId();
+        if (!(id instanceof Lang.Number)) { return; }
+        Application.Properties.setValue("asrFactor", id);
+        var app = Application.getApp();
+        if (app != null && app has :onSettingsChanged) { app.onSettingsChanged(); }
+        if (_parent != null && _parent has :refreshSubLabels) { _parent.refreshSubLabels(); }
+        WatchUi.popView(WatchUi.SLIDE_RIGHT);
+    }
+    function onBack() as Void { WatchUi.popView(WatchUi.SLIDE_RIGHT); }
+}
+
+// ---- Language picker -------------------------------------------------
+
+class LangPickerMenu extends WatchUi.Menu2 {
+    function initialize() {
+        Menu2.initialize({ :title => "Language" });
+        var v = Application.Properties.getValue("langIdx");
+        var cur = (v == null) ? 0 : v.toNumber();
+        var entries = [[0, "Auto"], [1, "Kazaksha"], [2, "Russian"], [3, "English"]];
+        // overwrite with localised names
+        entries[1][1] = "Қазақша";
+        entries[2][1] = "Русский";
+        for (var i = 0; i < entries.size(); i++) {
+            addItem(new WatchUi.MenuItem(
+                entries[i][1],
+                (cur == entries[i][0]) ? "*" : null,
+                entries[i][0], null));
+        }
+    }
+}
+
+class LangPickerDelegate extends WatchUi.Menu2InputDelegate {
+    var _parent;
+    function initialize(parent) { Menu2InputDelegate.initialize(); _parent = parent; }
+    function onSelect(item) as Void {
+        var id = item.getId();
+        if (!(id instanceof Lang.Number)) { return; }
+        Application.Properties.setValue("langIdx", id);
+        var app = Application.getApp();
+        if (app != null && app has :onSettingsChanged) { app.onSettingsChanged(); }
+        if (_parent != null && _parent has :refreshSubLabels) { _parent.refreshSubLabels(); }
+        WatchUi.popView(WatchUi.SLIDE_RIGHT);
+    }
+    function onBack() as Void { WatchUi.popView(WatchUi.SLIDE_RIGHT); }
+}
+
+// ---- Method picker ---------------------------------------------------
+
+class MethodPickerMenu extends WatchUi.Menu2 {
+    function initialize() {
+        Menu2.initialize({ :title => "Method" });
+        var v = Application.Properties.getValue("methodIdx");
+        var cur = (v == null) ? 0 : v.toNumber();
+        for (var i = 0; i < Methods.LABELS.size(); i++) {
+            addItem(new WatchUi.MenuItem(
+                Methods.LABELS[i],
+                (cur == i) ? "*" : null,
+                i, null));
+        }
+    }
+}
+
+class MethodPickerDelegate extends WatchUi.Menu2InputDelegate {
+    var _parent;
+    function initialize(parent) { Menu2InputDelegate.initialize(); _parent = parent; }
+    function onSelect(item) as Void {
+        var id = item.getId();
+        if (!(id instanceof Lang.Number)) { return; }
+        Application.Properties.setValue("methodIdx", id);
+        var app = Application.getApp();
+        if (app != null && app has :onSettingsChanged) { app.onSettingsChanged(); }
+        if (_parent != null && _parent has :refreshSubLabels) { _parent.refreshSubLabels(); }
+        WatchUi.popView(WatchUi.SLIDE_RIGHT);
+    }
+    function onBack() as Void { WatchUi.popView(WatchUi.SLIDE_RIGHT); }
 }
