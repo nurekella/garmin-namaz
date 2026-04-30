@@ -13,11 +13,8 @@ using Toybox.Lang;
 //                   1:23:45
 //
 // Glance binary runs in an isolated scope where the auto-generated
-// Rez symbol can be unavailable (manifests as "Could not access
-// symbol 'Rez'" at runtime, which is not catchable via try/catch
-// because it fails during symbol resolution, not function execution).
-// To stay reliable we hardcode English strings here rather than going
-// through PrayerNames + Rez. Localising the glance is queued for v1.1.
+// Rez symbol is unavailable. PrayerNames + HijriDate are now baked-
+// table-only (no Rez), so we can localise glance without crashing.
 (:glance)
 class GlanceView extends WatchUi.GlanceView {
 
@@ -39,7 +36,7 @@ class GlanceView extends WatchUi.GlanceView {
 
         var loc = _location.getCurrentLocation();
         if (loc == null) {
-            _drawCentered(dc, w, h, "GPS searching", Theme.COLOR_TEXT_DIM);
+            _drawCentered(dc, w, h, PrayerNames.gpsSearching(), Theme.COLOR_TEXT_DIM);
             return;
         }
 
@@ -71,41 +68,38 @@ class GlanceView extends WatchUi.GlanceView {
         }
 
         if (next == null) {
-            _drawCentered(dc, w, h, "GPS searching", Theme.COLOR_TEXT_DIM);
+            _drawCentered(dc, w, h, PrayerNames.gpsSearching(), Theme.COLOR_TEXT_DIM);
             return;
         }
 
         // Left column — label + name.
         dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
         dc.drawText(8, h / 2 - 18,
-                    Graphics.FONT_XTINY, "NEXT",
+                    Graphics.FONT_XTINY, PrayerNames.nextLabel(),
                     Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
 
         dc.setColor(Theme.COLOR_ACCENT, Graphics.COLOR_TRANSPARENT);
         dc.drawText(8, h / 2 + 12,
-                    Graphics.FONT_MEDIUM, _englishName(next[:name]),
+                    Graphics.FONT_MEDIUM, PrayerNames.nameOf(next[:name]),
                     Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
 
-        // Right column — time + countdown.
+        // Right column — time + countdown + small Hijri row.
         dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(w - 8, h / 2 - 18,
+        dc.drawText(w - 8, h / 2 - 22,
                     Graphics.FONT_TINY, TimeFormatter.hhmm(next[:time]),
                     Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
 
         dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(w - 8, h / 2 + 12,
+        dc.drawText(w - 8, h / 2 + 4,
                     Graphics.FONT_TINY, TimeFormatter.countdown(next[:secondsUntil]),
                     Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
-    }
 
-    function _englishName(sym) {
-        if (sym == :fajr)    { return "Fajr"; }
-        if (sym == :sunrise) { return "Sunrise"; }
-        if (sym == :dhuhr)   { return "Dhuhr"; }
-        if (sym == :asr)     { return "Asr"; }
-        if (sym == :maghrib) { return "Maghrib"; }
-        if (sym == :isha)    { return "Isha"; }
-        return "";
+        var hd = HijriDate.fromGregorian(nowInfo.year, nowInfo.month, nowInfo.day);
+        var hStr = hd[:day] + " " + HijriDate.monthName(hd[:month]);
+        dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(w - 8, h / 2 + 26,
+                    Graphics.FONT_XTINY, hStr,
+                    Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
     function _drawCentered(dc as Graphics.Dc, w, h, text, color) as Void {

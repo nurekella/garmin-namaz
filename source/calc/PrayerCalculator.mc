@@ -39,12 +39,10 @@ class PrayerCalculator {
                       - eqt / 60.0d;
 
         var fajrAngle    = _params[:fajrAngle].toDouble();
-        var ishaAngle    = _params[:ishaAngle].toDouble();
         var sunriseAngle = _angleOrDefault(:sunriseAngle, 0.833d);
 
         var hSun  = SolarMath.hourAngle(latitude, decl, sunriseAngle);
         var hFajr = SolarMath.hourAngle(latitude, decl, fajrAngle);
-        var hIsha = SolarMath.hourAngle(latitude, decl, ishaAngle);
 
         // Asr: sun at altitude `asrAlt` above horizon; pass -asrAlt to hourAngle.
         var asrAlt = SolarMath.asrAngle(latitude, decl, _asrFactor);
@@ -55,7 +53,18 @@ class PrayerCalculator {
         var dhuhr   = solarNoon;
         var asr     = (hAsr  != null) ? solarNoon + hAsr  : null;
         var maghrib = (hSun  != null) ? solarNoon + hSun  : null;
-        var isha    = (hIsha != null) ? solarNoon + hIsha : null;
+
+        // Isha — angle-based by default, but methods like Umm al-Qura use a
+        // fixed interval after Maghrib. params[:ishaIntervalMin] takes
+        // precedence over params[:ishaAngle] when present.
+        var isha = null;
+        var intervalMin = _params[:ishaIntervalMin];
+        if (intervalMin != null && maghrib != null) {
+            isha = maghrib + intervalMin.toDouble() / 60.0d;
+        } else if (_params[:ishaAngle] != null) {
+            var hIsha = SolarMath.hourAngle(latitude, decl, _params[:ishaAngle].toDouble());
+            isha = (hIsha != null) ? solarNoon + hIsha : null;
+        }
 
         return {
             :fajr      => _withOffsets(fajr,    :fajr),

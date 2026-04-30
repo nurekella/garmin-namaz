@@ -15,6 +15,10 @@
         <property id="prealertMin"   type="number">0</property>
         <!-- Language override: 0=auto, 1=kk, 2=ru, 3=en. -->
         <property id="langIdx"       type="number">0</property>
+        <!-- Calculation method: index into Methods.IDS. 0 = ҚМДБ (default). -->
+        <property id="methodIdx"     type="number">0</property>
+        <!-- Vibrate at prayer times. -->
+        <property id="notify"        type="boolean">true</property>
     </properties>
 
     <settings>
@@ -81,6 +85,25 @@
                 <listEntry value="2">Русский</listEntry>
                 <listEntry value="3">English</listEntry>
             </settingConfig>
+        </setting>
+
+        <setting propertyKey="@Properties.methodIdx" title="Method">
+            <settingConfig type="list">
+                <listEntry value="0">ҚМДБ (KZ)</listEntry>
+                <listEntry value="1">Muslim World League</listEntry>
+                <listEntry value="2">Diyanet (Turkey)</listEntry>
+                <listEntry value="3">Egyptian</listEntry>
+                <listEntry value="4">ISNA</listEntry>
+                <listEntry value="5">Karachi</listEntry>
+                <listEntry value="6">Jafari (Shia)</listEntry>
+                <listEntry value="7">Umm al-Qura</listEntry>
+                <listEntry value="8">Tehran</listEntry>
+                <listEntry value="9">Fixed Isha (90m)</listEntry>
+            </settingConfig>
+        </setting>
+
+        <setting propertyKey="@Properties.notify" title="Notifications">
+            <settingConfig type="boolean"/>
         </setting>
     </settings>
 

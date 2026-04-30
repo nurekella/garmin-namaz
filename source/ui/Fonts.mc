@@ -19,7 +19,7 @@ module Fonts {
     // Faces in priority order — RobotoCondensedBold reads heaviest and
     // visually matches the built-in bitmap fonts; if a device is missing
     // it we step down to whatever is available.
-    const FACES = ["RobotoCondensedBold", "RobotoBlack", "RobotoRegular", "RobotoCondensedRegular"];
+    const FACES = ["RobotoCondensedBold", "Swiss721Regular", "RobotoRegular", "RobotoCondensedRegular"];
 
     function _vector(size, fallback) {
         if (!(Toybox.Graphics has :VectorFont)) {
@@ -42,9 +42,9 @@ module Fonts {
 
     // Sizes bumped vs the bitmap tiers because vector text renders
     // slightly smaller for the same nominal pt due to anti-aliasing.
-    function xtiny()  { return _vector(24, Graphics.FONT_XTINY);  }
-    function tiny()   { return _vector(28, Graphics.FONT_TINY);   }
-    function small()  { return _vector(34, Graphics.FONT_SMALL);  }
-    function medium() { return _vector(42, Graphics.FONT_MEDIUM); }
-    function large()  { return _vector(52, Graphics.FONT_LARGE);  }
+    function xtiny()  { return _vector(22, Graphics.FONT_XTINY);  }
+    function tiny()   { return _vector(26, Graphics.FONT_TINY);   }
+    function small()  { return _vector(32, Graphics.FONT_SMALL);  }
+    function medium() { return _vector(40, Graphics.FONT_MEDIUM); }
+    function large()  { return _vector(48, Graphics.FONT_LARGE);  }
 }

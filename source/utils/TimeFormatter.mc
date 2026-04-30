@@ -1,6 +1,6 @@
 using Toybox.Lang;
 
-(:glance)
+(:glance, :background)
 module TimeFormatter {
 
     // 13.5 -> "13:30". Negative or null -> "--:--".
@@ -24,6 +24,13 @@ module TimeFormatter {
         var m = (totalSec % 3600) / 60;
         var s = totalSec % 60;
         return h + ":" + _pad2(m) + ":" + _pad2(s);
+    }
+
+    // 3725 -> "62 min" (rounded up so 1s left still reads "1 min" not "0").
+    function minutesLeft(totalSec) {
+        if (totalSec == null || totalSec < 0) { return "--"; }
+        var m = (totalSec + 59) / 60;
+        return "" + m;
     }
 
     function _pad2(n) {

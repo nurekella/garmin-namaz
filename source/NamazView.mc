@@ -29,6 +29,10 @@ class NamazView extends WatchUi.View {
     var _location_dict;
     var _today_times;
     var _today_day;          // day-of-month at last refresh, for midnight rollover detection
+    var _showMinutes = false; // tap toggles countdown HH:MM:SS <-> "NN min"
+    var _showTomorrow = false; // DOWN toggles list to tomorrow's schedule
+    var _tomorrow_times;
+    var _tomorrow_day;
 
     function initialize(calc, location) {
         View.initialize();
@@ -61,6 +65,29 @@ class NamazView extends WatchUi.View {
     function refresh() as Void {
         _refreshTimes();
         WatchUi.requestUpdate();
+    }
+
+    function toggleMinutes() as Void {
+        _showMinutes = !_showMinutes;
+        WatchUi.requestUpdate();
+    }
+
+    function toggleTomorrow() as Void {
+        _showTomorrow = !_showTomorrow;
+        if (_showTomorrow) { _ensureTomorrow(); }
+        WatchUi.requestUpdate();
+    }
+
+    function _ensureTomorrow() as Void {
+        var nowInfo = Gregorian.info(Time.now(), Time.FORMAT_SHORT);
+        if (_tomorrow_times != null && _tomorrow_day == nowInfo.day) { return; }
+        var tMoment = Time.now().add(new Time.Duration(86400));
+        var tInfo = Gregorian.info(tMoment, Time.FORMAT_SHORT);
+        _tomorrow_times = _calc.calculate(
+            _location_dict[:lat], _location_dict[:lon],
+            tInfo.year, tInfo.month, tInfo.day,
+            _location_dict[:tz]);
+        _tomorrow_day = nowInfo.day;
     }
 
     function _refreshTimes() as Void {
@@ -158,20 +185,30 @@ class NamazView extends WatchUi.View {
                     nameFont, name,
                     Graphics.TEXT_JUSTIFY_LEFT);
 
-        // Countdown — FONT_NUMBER_MILD keeps it slim enough to leave
-        // room for the prayer grid below.
+        // Countdown — tap toggles between HH:MM:SS and "NN min".
         dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, Y_COUNTDOWN,
-                    Graphics.FONT_NUMBER_MILD, TimeFormatter.countdown(secondsUntil),
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        if (_showMinutes) {
+            dc.drawText(Theme.CENTER_X, Y_COUNTDOWN,
+                        Graphics.FONT_NUMBER_MILD,
+                        TimeFormatter.minutesLeft(secondsUntil) + " min",
+                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        } else {
+            dc.drawText(Theme.CENTER_X, Y_COUNTDOWN,
+                        Graphics.FONT_NUMBER_MILD, TimeFormatter.countdown(secondsUntil),
+                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        }
     }
 
     function _drawPrayerList(dc as Graphics.Dc, nowInfo) as Void {
+        var times = _today_times;
         var nowH = nowInfo.hour + nowInfo.min / 60.0d + nowInfo.sec / 3600.0d;
         var nextSym = null;
-        var nextEntry = _calc.getNextPrayer(_today_times, nowH);
-        if (nextEntry != null) {
-            nextSym = nextEntry[:name];
+        if (_showTomorrow && _tomorrow_times != null) {
+            times = _tomorrow_times;
+            nextSym = :fajr; // first prayer of next day reads as "next"
+        } else {
+            var nextEntry = _calc.getNextPrayer(_today_times, nowH);
+            if (nextEntry != null) { nextSym = nextEntry[:name]; }
         }
 
         var entries = [
@@ -188,8 +225,10 @@ class NamazView extends WatchUi.View {
             var x    = entries[i][1];
             var row  = entries[i][2];
             var y    = Y_LIST_TOP + row * ROW_HEIGHT;
-            var time = _today_times[sym];
-            var color = _colorFor(sym, nextSym, time, nowH);
+            var time = times[sym];
+            var color = _showTomorrow
+                ? Theme.COLOR_TEXT_DIM
+                : _colorFor(sym, nextSym, time, nowH);
 
             dc.setColor(color, Graphics.COLOR_TRANSPARENT);
             dc.drawText(x, y,

@@ -1,5 +1,4 @@
 using Toybox.Lang;
-using Toybox.WatchUi;
 
 // Gregorian -> Hijri date conversion using the Kuwaiti tabular algorithm
 // (also called "civil Islamic calendar"). 30-year cycle with 11 leap
@@ -16,6 +15,7 @@ using Toybox.WatchUi;
 //
 // Reference: https://www.staff.science.uu.nl/~gent0113/islam/ummalqura.htm
 //            (Kuwaiti algorithm formulas)
+(:glance, :background)
 module HijriDate {
 
     // Julian Day Number of 1 Muharram 1 AH = 16 July 622 CE (Julian).

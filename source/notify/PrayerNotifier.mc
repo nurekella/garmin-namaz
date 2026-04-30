@@ -35,10 +35,34 @@ module PrayerNotifier {
         ];
     }
 
+    // Stronger 5-pulse pattern for Jumu'ah (Friday Dhuhr).
+    function getJumuahVibePattern() {
+        return [
+            new Attention.VibeProfile(100, 700),
+            new Attention.VibeProfile(0,   250),
+            new Attention.VibeProfile(100, 700),
+            new Attention.VibeProfile(0,   250),
+            new Attention.VibeProfile(100, 700),
+            new Attention.VibeProfile(0,   250),
+            new Attention.VibeProfile(100, 700),
+            new Attention.VibeProfile(0,   250),
+            new Attention.VibeProfile(100, 700)
+        ];
+    }
+
     function vibrateNow() {
-        if (Attention has :vibrate) {
-            Attention.vibrate(getVibePattern());
+        if (!(Attention has :vibrate)) { return; }
+        if (!Settings.notificationsEnabled()) { return; }
+        var pattern = getVibePattern();
+        var rec = Storage.get(STORAGE_KEY_NEXT);
+        if (rec != null && rec["name"] != null && rec["name"].equals(":dhuhr")) {
+            // day_of_week: 1=Sunday..7=Saturday; Friday = 6.
+            var dow = Gregorian.info(Time.now(), Time.FORMAT_SHORT).day_of_week;
+            if (dow == 6) {
+                pattern = getJumuahVibePattern();
+            }
         }
+        Attention.vibrate(pattern);
     }
 
     // Computes the next obligatory-prayer moment (skipping anything in

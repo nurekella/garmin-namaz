@@ -45,8 +45,8 @@ class NamazApp extends Application.AppBase {
     }
 
     function getInitialView() as [WatchUi.Views] or [WatchUi.Views, WatchUi.InputDelegates] {
-        var view = new NamazView(_calculator, _location);
-        var delegate = new NamazDelegate(view);
+        var view = new CardView(_calculator, _location);
+        var delegate = new CardDelegate(view, true);
         return [view, delegate];
     }
 

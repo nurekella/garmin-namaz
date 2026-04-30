@@ -11,9 +11,9 @@ module Theme {
     const COLOR_BG          = 0x000000;
 
     // Foreground tiers, descending salience.
-    const COLOR_TEXT        = 0xF5F0E8;  // primary text — warm white
-    const COLOR_TEXT_DIM    = 0x6E6860;  // secondary text — labels, dates
-    const COLOR_TEXT_MUTED  = 0x3D3833;  // tertiary — passed prayers
+    const COLOR_TEXT        = 0xFFFFFF;  // primary text — pure white for max contrast on AMOLED
+    const COLOR_TEXT_DIM    = 0xA8A29A;  // secondary text — labels, dates
+    const COLOR_TEXT_MUTED  = 0x6E6860;  // tertiary — passed prayers
 
     // Accent — bronze, for "active / next" prayer and key numerics.
     const COLOR_ACCENT      = 0xD4A574;

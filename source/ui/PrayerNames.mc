@@ -1,15 +1,9 @@
-using Toybox.WatchUi;
 using Toybox.Lang;
 
 // Localised display names for prayers and supporting labels.
-//
-// Strategy:
-//   - If user picked an explicit language in settings (Settings.language()
-//     returns "kk"/"ru"/"en" non-auto), serve from baked-in tables.
-//   - Otherwise resolve via Rez.Strings (system locale picker).
-//
-// Watch-app only — glance / background binaries can't link Rez at
-// runtime. Those contexts hardcode English inline.
+// All three locales come from baked tables here — no Rez calls — so
+// the module is safe to use from glance / background binaries.
+(:glance, :background)
 module PrayerNames {
 
     // ---- baked tables (kk/ru/en) ----

@@ -1,6 +1,6 @@
 using Toybox.Application;
 using Toybox.Lang;
-using Toybox.WatchUi;
+using Toybox.System;
 
 // Reads user preferences from Application.Properties (managed via
 // Garmin Connect Mobile / Settings on watch) and projects them onto
@@ -14,17 +14,19 @@ module Settings {
 
     // "kk" / "ru" / "en" — falls back to the system Rez locale when user
     // chose "auto" or never opened settings.
+    // Returns "kk" / "ru" / "en". Works in app, glance, and background
+    // scopes — uses System.getDeviceSettings (Rez is unavailable in
+    // glance/background binaries).
     function language() {
         var v = Application.Properties.getValue("langIdx");
         var idx = (v == null) ? 0 : v.toNumber();
         if (idx == 1) { return "kk"; }
         if (idx == 2) { return "ru"; }
         if (idx == 3) { return "en"; }
-        // 0 / unknown -> system locale via Rez.
-        var sys = WatchUi.loadResource(Rez.Strings.LangCode);
-        if (sys != null && (sys.equals("kk") || sys.equals("ru") || sys.equals("en"))) {
-            return sys;
-        }
+        // Auto — resolve from system locale.
+        var sys = System.getDeviceSettings().systemLanguage;
+        if (System has :LANGUAGE_KAZ && sys == System.LANGUAGE_KAZ) { return "kk"; }
+        if (System has :LANGUAGE_RUS && sys == System.LANGUAGE_RUS) { return "ru"; }
         return "en";
     }
 
@@ -61,11 +63,24 @@ module Settings {
         };
     }
 
-    // Builds a PrayerCalculator with the current method (DUMK) and
-    // user-overridable Asr factor + per-prayer offsets.
+    function methodId() {
+        var v = Application.Properties.getValue("methodIdx");
+        var idx = (v == null) ? 0 : v.toNumber();
+        if (idx < 0 || idx >= Methods.IDS.size()) { return "DUMK"; }
+        return Methods.IDS[idx];
+    }
+
+    function notificationsEnabled() {
+        var v = Application.Properties.getValue("notify");
+        if (v == null) { return true; }
+        return v;
+    }
+
+    // Builds a PrayerCalculator from the user's chosen method + Asr factor
+    // + per-prayer offsets.
     function buildCalculator() {
         return new PrayerCalculator(
-            DumkMethod.params(),
+            Methods.paramsFor(methodId()),
             asrFactor(),
             userOffsets()
         );

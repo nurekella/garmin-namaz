@@ -27,6 +27,10 @@ class SettingsMenu extends WatchUi.Menu2 {
             WatchUi.loadResource(Rez.Strings.SettingPreAlert),
             _prealertSubLabel(), :prealert, null));
         addItem(new WatchUi.MenuItem(
+            "Method", _methodSubLabel(), :method, null));
+        addItem(new WatchUi.MenuItem(
+            "Notifications", _notifySubLabel(), :notify, null));
+        addItem(new WatchUi.MenuItem(
             "Language", _langSubLabel(), :lang, null));
         addItem(new WatchUi.MenuItem(
             "Offset", "", :offsets, null));
@@ -37,7 +41,20 @@ class SettingsMenu extends WatchUi.Menu2 {
         i = getItem(0); if (i != null) { i.setSubLabel(_asrSubLabel()); }
         i = getItem(1); if (i != null) { i.setSubLabel(_citySubLabel()); }
         i = getItem(2); if (i != null) { i.setSubLabel(_prealertSubLabel()); }
-        i = getItem(3); if (i != null) { i.setSubLabel(_langSubLabel()); }
+        i = getItem(3); if (i != null) { i.setSubLabel(_methodSubLabel()); }
+        i = getItem(4); if (i != null) { i.setSubLabel(_notifySubLabel()); }
+        i = getItem(5); if (i != null) { i.setSubLabel(_langSubLabel()); }
+    }
+
+    function _methodSubLabel() as Lang.String {
+        var v = Application.Properties.getValue("methodIdx");
+        var idx = (v == null) ? 0 : v.toNumber();
+        if (idx < 0 || idx >= Methods.LABELS.size()) { idx = 0; }
+        return Methods.LABELS[idx];
+    }
+
+    function _notifySubLabel() as Lang.String {
+        return Settings.notificationsEnabled() ? "On" : "Off";
     }
 
     function _langSubLabel() as Lang.String {
@@ -103,6 +120,16 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             else if (cur == 10) { next = 15; }
             else                { next = 0; }
             Application.Properties.setValue("prealertMin", next);
+            _applyAndRefresh();
+        } else if (id == :method) {
+            var v = Application.Properties.getValue("methodIdx");
+            var idx = (v == null) ? 0 : v.toNumber();
+            idx = (idx + 1) % Methods.IDS.size();
+            Application.Properties.setValue("methodIdx", idx);
+            _applyAndRefresh();
+        } else if (id == :notify) {
+            var cur = Settings.notificationsEnabled();
+            Application.Properties.setValue("notify", !cur);
             _applyAndRefresh();
         } else if (id == :lang) {
             var v = Application.Properties.getValue("langIdx");

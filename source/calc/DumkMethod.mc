@@ -75,3 +75,92 @@ module EgyptianMethod {
         };
     }
 }
+
+// Islamic Society of North America.
+module IsnaMethod {
+    const ID = "ISNA";
+    function params() {
+        return { :id => ID, :fajrAngle => 15.0d, :ishaAngle => 15.0d,
+                 :sunriseAngle => 0.833d, :offsets => {} };
+    }
+}
+
+// University of Islamic Sciences, Karachi.
+module KarachiMethod {
+    const ID = "KARACHI";
+    function params() {
+        return { :id => ID, :fajrAngle => 18.0d, :ishaAngle => 18.0d,
+                 :sunriseAngle => 0.833d, :offsets => {} };
+    }
+}
+
+// Diyanet İşleri Başkanlığı, Türkiye.
+module DiyanetMethod {
+    const ID = "DIYANET";
+    function params() {
+        return { :id => ID, :fajrAngle => 18.0d, :ishaAngle => 17.0d,
+                 :sunriseAngle => 0.833d,
+                 :offsets => { :sunrise => -7, :dhuhr => 7, :maghrib => 9 } };
+    }
+}
+
+// Umm al-Qura University, Makkah.
+// Isha is a fixed 90-minute interval after Maghrib (120 in Ramadan;
+// we don't track Ramadan in v1 so 90 stands year-round).
+module UmmAlQuraMethod {
+    const ID = "UMM_AL_QURA";
+    function params() {
+        return { :id => ID, :fajrAngle => 18.5d, :ishaIntervalMin => 90,
+                 :sunriseAngle => 0.833d, :offsets => {} };
+    }
+}
+
+// Institute of Geophysics, University of Tehran (Shia).
+module TehranMethod {
+    const ID = "TEHRAN";
+    function params() {
+        return { :id => ID, :fajrAngle => 17.7d, :ishaAngle => 14.0d,
+                 :sunriseAngle => 0.833d, :offsets => {} };
+    }
+}
+
+// Shia Ithna-Ashari, Leva Institute, Qum (Jafari).
+module JafariMethod {
+    const ID = "JAFARI";
+    function params() {
+        return { :id => ID, :fajrAngle => 16.0d, :ishaAngle => 14.0d,
+                 :sunriseAngle => 0.833d, :offsets => {} };
+    }
+}
+
+// Generic fixed-interval Isha (used by some local committees).
+// Fajr 18°, Isha = 90 min after Maghrib.
+module FixedIshaMethod {
+    const ID = "FIXED_ISHA";
+    function params() {
+        return { :id => ID, :fajrAngle => 18.0d, :ishaIntervalMin => 90,
+                 :sunriseAngle => 0.833d, :offsets => {} };
+    }
+}
+
+// All available method ids (for the on-watch settings picker).
+module Methods {
+    const IDS = ["DUMK", "MWL", "DIYANET", "EGYPT", "ISNA", "KARACHI",
+                 "JAFARI", "UMM_AL_QURA", "TEHRAN", "FIXED_ISHA"];
+    const LABELS = ["ҚМДБ (KZ)", "MWL", "Diyanet (TR)", "Egyptian", "ISNA",
+                    "Karachi", "Jafari", "Umm al-Qura", "Tehran", "Fixed Isha"];
+
+    function paramsFor(id) {
+        if (id == null || id.equals("DUMK"))         { return DumkMethod.params(); }
+        if (id.equals("MWL"))                         { return MwlMethod.params(); }
+        if (id.equals("EGYPT"))                       { return EgyptianMethod.params(); }
+        if (id.equals("ISNA"))                        { return IsnaMethod.params(); }
+        if (id.equals("KARACHI"))                     { return KarachiMethod.params(); }
+        if (id.equals("DIYANET"))                     { return DiyanetMethod.params(); }
+        if (id.equals("UMM_AL_QURA"))                 { return UmmAlQuraMethod.params(); }
+        if (id.equals("TEHRAN"))                      { return TehranMethod.params(); }
+        if (id.equals("JAFARI"))                      { return JafariMethod.params(); }
+        if (id.equals("FIXED_ISHA"))                  { return FixedIshaMethod.params(); }
+        return DumkMethod.params();
+    }
+}
