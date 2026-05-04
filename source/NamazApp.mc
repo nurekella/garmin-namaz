@@ -25,7 +25,8 @@ class NamazApp extends Application.AppBase {
         _applySettings();
         // Re-arm the temporal event with the new schedule.
         PrayerNotifier.schedule(_calculator, _location);
-        WatchUi.requestUpdate();
+        // Force the visible view to re-pull _calc and redraw.
+        if (WatchUi has :requestUpdate) { WatchUi.requestUpdate(); }
     }
 
     function onStart(state as Lang.Dictionary?) as Void {

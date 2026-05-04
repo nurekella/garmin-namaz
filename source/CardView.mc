@@ -46,6 +46,12 @@ class CardView extends WatchUi.View {
     function _tick() as Void { WatchUi.requestUpdate(); }
 
     function _refresh() as Void {
+        // Re-pull calculator from the app — settings changes (Asr, method,
+        // offsets) replace app._calculator wholesale, our cached reference
+        // would otherwise show stale times.
+        var app = Application.getApp();
+        if (app != null) { _calc = app._calculator; }
+
         var loc = _location.getCurrentLocation();
         if (loc == null) { _times = null; return; }
         var info = Gregorian.info(Time.now(), Time.FORMAT_SHORT);
@@ -79,6 +85,13 @@ class CardView extends WatchUi.View {
         if (_times == null || _today_day != info.day) {
             _refresh();
             _idx = _initialIdx();
+        }
+        // Re-pull calc + recompute every frame is cheap (< 1 ms);
+        // ensures Asr/method changes show without a manual refresh.
+        var app = Application.getApp();
+        if (app != null && app._calculator != _calc) {
+            _calc = app._calculator;
+            _refresh();
         }
 
         dc.setColor(Theme.COLOR_BG, Theme.COLOR_BG);

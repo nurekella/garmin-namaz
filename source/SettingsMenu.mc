@@ -1,5 +1,6 @@
 using Toybox.WatchUi;
 using Toybox.Application;
+using Toybox.Attention;
 using Toybox.Lang;
 
 // On-watch settings menu. Entered via the watch's Menu button (long-press UP).
@@ -30,6 +31,8 @@ class SettingsMenu extends WatchUi.Menu2 {
             "Method", _methodSubLabel(), :method, null));
         addItem(new WatchUi.MenuItem(
             "Notifications", _notifySubLabel(), :notify, null));
+        addItem(new WatchUi.MenuItem(
+            "Test vibration", null, :testVibe, null));
         addItem(new WatchUi.MenuItem(
             "Language", _langSubLabel(), :lang, null));
         addItem(new WatchUi.MenuItem(
@@ -127,6 +130,12 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             var cur = Settings.notificationsEnabled();
             Application.Properties.setValue("notify", !cur);
             _applyAndRefresh();
+        } else if (id == :testVibe) {
+            // Bypass the notify gate so the user can confirm Attention.vibrate
+            // works on this device regardless of the toggle.
+            if (Toybox has :Attention && Attention has :vibrate) {
+                Attention.vibrate(PrayerNotifier.getVibePattern());
+            }
         } else if (id == :lang) {
             var menu = new LangPickerMenu();
             WatchUi.pushView(menu, new LangPickerDelegate(_menu), WatchUi.SLIDE_LEFT);

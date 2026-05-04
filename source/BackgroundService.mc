@@ -18,14 +18,13 @@ class BackgroundService extends System.ServiceDelegate {
     function onTemporalEvent() as Void {
         PrayerNotifier.vibrateNow();
 
-        // Re-arm for the next prayer using freshly resolved location +
-        // calculator. Both are cheap to construct so we don't bother
-        // caching across runs (we run for under a second total).
+        // Re-arm for the next prayer using the user's chosen method +
+        // Asr factor + offsets (NOT hardcoded DUMK — that bug shipped in
+        // 1.1.0 and meant background re-arms ignored user method/offset
+        // settings; vibration timing was off for non-default methods).
         var location = new LocationProvider();
-        var calc = new PrayerCalculator(
-            DumkMethod.params(),
-            DumkMethod.DEFAULT_ASR,
-            null);
+        Settings.applyToLocator(location);
+        var calc = Settings.buildCalculator();
         PrayerNotifier.schedule(calc, location);
 
         Background.exit(null);
