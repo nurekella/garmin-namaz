@@ -39,6 +39,7 @@ module DumkMethod {
 }
 
 // Muslim World League — kept for users who prefer it.
+(:glance, :background)
 module MwlMethod {
 
     const ID              = "MWL";
@@ -58,6 +59,7 @@ module MwlMethod {
 }
 
 // Egyptian General Authority of Survey.
+(:glance, :background)
 module EgyptianMethod {
 
     const ID              = "EGYPT";
@@ -77,6 +79,7 @@ module EgyptianMethod {
 }
 
 // Islamic Society of North America.
+(:glance, :background)
 module IsnaMethod {
     const ID = "ISNA";
     function params() {
@@ -86,6 +89,7 @@ module IsnaMethod {
 }
 
 // University of Islamic Sciences, Karachi.
+(:glance, :background)
 module KarachiMethod {
     const ID = "KARACHI";
     function params() {
@@ -95,6 +99,7 @@ module KarachiMethod {
 }
 
 // Diyanet İşleri Başkanlığı, Türkiye.
+(:glance, :background)
 module DiyanetMethod {
     const ID = "DIYANET";
     function params() {
@@ -107,6 +112,7 @@ module DiyanetMethod {
 // Umm al-Qura University, Makkah.
 // Isha is a fixed 90-minute interval after Maghrib (120 in Ramadan;
 // we don't track Ramadan in v1 so 90 stands year-round).
+(:glance, :background)
 module UmmAlQuraMethod {
     const ID = "UMM_AL_QURA";
     function params() {
@@ -116,6 +122,7 @@ module UmmAlQuraMethod {
 }
 
 // Institute of Geophysics, University of Tehran (Shia).
+(:glance, :background)
 module TehranMethod {
     const ID = "TEHRAN";
     function params() {
@@ -125,6 +132,7 @@ module TehranMethod {
 }
 
 // Shia Ithna-Ashari, Leva Institute, Qum (Jafari).
+(:glance, :background)
 module JafariMethod {
     const ID = "JAFARI";
     function params() {
@@ -135,6 +143,7 @@ module JafariMethod {
 
 // Generic fixed-interval Isha (used by some local committees).
 // Fajr 18°, Isha = 90 min after Maghrib.
+(:glance, :background)
 module FixedIshaMethod {
     const ID = "FIXED_ISHA";
     function params() {
@@ -144,6 +153,7 @@ module FixedIshaMethod {
 }
 
 // All available method ids (for the on-watch settings picker).
+(:glance, :background)
 module Methods {
     const IDS = ["DUMK", "MWL", "DIYANET", "EGYPT", "ISNA", "KARACHI",
                  "JAFARI", "UMM_AL_QURA", "TEHRAN", "FIXED_ISHA"];
