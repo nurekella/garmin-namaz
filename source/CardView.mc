@@ -146,11 +146,11 @@ class CardView extends WatchUi.View {
         // ---- 6 prayers ----
         var nextEntry = _calc.getNextPrayer(_times, nowH);
         var nextSym = (nextEntry != null) ? nextEntry[:name] : null;
-        // Tahajjud lives on its own swipeable card now — drop it from the
-        // overview to free vertical space for bigger row fonts.
-        var prayers = [:fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha];
+        // Sunrise and Tahajjud get their own swipeable cards so the
+        // overview can show 5 mandatory prayers with a bigger font.
+        var prayers = [:fajr, :dhuhr, :asr, :maghrib, :isha];
         var rowY = 156;
-        var rowH = 36;
+        var rowH = 44;
         for (var i = 0; i < prayers.size(); i++) {
             var sym = prayers[i];
             var t   = _times[sym];
@@ -160,17 +160,17 @@ class CardView extends WatchUi.View {
             // 28x28 icon flush-left, vertically centred on the row.
             var icon = _iconFor(sym);
             if (icon != null) {
-                dc.drawBitmap(Theme.CENTER_X - 110,
+                dc.drawBitmap(Theme.CENTER_X - 130,
                               y - icon.getHeight() / 2,
                               icon);
             }
 
             dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(Theme.CENTER_X - 70, y,
-                        Fonts.small(), PrayerNames.nameOf(sym),
+            dc.drawText(Theme.CENTER_X - 90, y,
+                        Fonts.medium(), PrayerNames.nameOf(sym),
                         Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
-            dc.drawText(Theme.CENTER_X + 90, y,
-                        Fonts.small(), TimeFormatter.hhmm(t),
+            dc.drawText(Theme.CENTER_X + 120, y,
+                        Fonts.medium(), TimeFormatter.hhmm(t),
                         Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
         }
 
@@ -316,8 +316,8 @@ class CardView extends WatchUi.View {
         // Current clock at top centre.
         var clockStr = _pad2(info.hour) + ":" + _pad2(info.min);
         dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 24,
-                    Fonts.xtiny(), clockStr,
+        dc.drawText(Theme.CENTER_X, 32,
+                    Fonts.small(), clockStr,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         // Bottom: Greg + Hijri.
@@ -327,11 +327,11 @@ class CardView extends WatchUi.View {
         var hijriStr = hd[:day] + " " + HijriDate.monthName(hd[:month]) + " " + hd[:year];
 
         dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 338,
-                    Fonts.tiny(), gregStr,
+        dc.drawText(Theme.CENTER_X, 332,
+                    Fonts.small(), gregStr,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-        dc.drawText(Theme.CENTER_X, 360,
-                    Fonts.tiny(), hijriStr,
+        dc.drawText(Theme.CENTER_X, 358,
+                    Fonts.small(), hijriStr,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
