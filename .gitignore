@@ -9,3 +9,7 @@ developer_key.pem
 .idea/
 .claude/
 *.log
+
+# local build artefacts (icon generator scratch)
+build/svg/
+build/test.png

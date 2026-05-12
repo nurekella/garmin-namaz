@@ -20,7 +20,9 @@ using Toybox.Lang;
 (:background, :glance)
 module PrayerNotifier {
 
-    const STORAGE_KEY_NEXT = "scheduled_prayer";
+    const STORAGE_KEY_NEXT     = "scheduled_prayer";
+    const STORAGE_KEY_ERR      = "last_schedule_err";
+    const STORAGE_KEY_LASTVIBE = "last_vibrate_ts";
     const MIN_SCHEDULE_GAP_SEC = 5 * 60;
 
     // 3 pulses x 500 ms separated by 300 ms — distinct enough from
@@ -63,6 +65,9 @@ module PrayerNotifier {
             }
         }
         Attention.vibrate(pattern);
+        // Record that the platform actually fired the temporal event and we
+        // got here — diagnostic for when users say "no vibration".
+        Storage.set(STORAGE_KEY_LASTVIBE, Time.now().value());
     }
 
     // Computes the next obligatory-prayer moment (skipping anything in
@@ -84,11 +89,17 @@ module PrayerNotifier {
 
         try {
             Background.registerForTemporalEvent(new Time.Moment(target[:timestampSec]));
+            Storage.remove(STORAGE_KEY_ERR);
         } catch (e) {
             // Most likely: requested time was inside another scheduled
-            // event's lockout, or under the 5-min floor we did not
-            // catch. Storage record is still useful — main app sees
-            // what we tried to schedule.
+            // event's lockout, the 5-min floor, OR Background-Service
+            // permission was denied for this app. Capture the message for
+            // the diagnostic line on the overview card.
+            var msg = "?";
+            if (e != null && e has :getErrorMessage) {
+                msg = e.getErrorMessage();
+            }
+            Storage.set(STORAGE_KEY_ERR, msg);
             return null;
         }
         return record;
@@ -96,6 +107,14 @@ module PrayerNotifier {
 
     function getScheduled() {
         return Storage.get(STORAGE_KEY_NEXT);
+    }
+
+    function getLastError() {
+        return Storage.get(STORAGE_KEY_ERR);
+    }
+
+    function getLastVibrateTs() {
+        return Storage.get(STORAGE_KEY_LASTVIBE);
     }
 
     function clearScheduled() {

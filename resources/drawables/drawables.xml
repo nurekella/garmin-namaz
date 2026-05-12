@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <drawables>
-    <bitmap id="LauncherIcon" filename="launcher_icon.png"/>
+    <bitmap id="LauncherIcon"   filename="launcher_icon.png"/>
+    <bitmap id="IconFajr"       filename="icon_fajr.png"/>
+    <bitmap id="IconSunrise"    filename="icon_sunrise.png"/>
+    <bitmap id="IconDhuhr"      filename="icon_dhuhr.png"/>
+    <bitmap id="IconAsr"        filename="icon_asr.png"/>
+    <bitmap id="IconMaghrib"    filename="icon_maghrib.png"/>
+    <bitmap id="IconIsha"       filename="icon_isha.png"/>
+    <bitmap id="IconTahajjud"   filename="icon_tahajjud.png"/>
 </drawables>

@@ -146,21 +146,71 @@ class CardView extends WatchUi.View {
         // ---- 6 prayers ----
         var nextEntry = _calc.getNextPrayer(_times, nowH);
         var nextSym = (nextEntry != null) ? nextEntry[:name] : null;
-        var prayers = [:fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha, :tahajjud];
-        var rowY = 152;
-        var rowH = 34;
+        // Tahajjud lives on its own swipeable card now — drop it from the
+        // overview to free vertical space for bigger row fonts.
+        var prayers = [:fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha];
+        var rowY = 156;
+        var rowH = 36;
         for (var i = 0; i < prayers.size(); i++) {
             var sym = prayers[i];
             var t   = _times[sym];
             var color = _colorFor(sym, nextSym, t, nowH);
+            var y = rowY + i * rowH;
+
+            // 28x28 icon flush-left, vertically centred on the row.
+            var icon = _iconFor(sym);
+            if (icon != null) {
+                dc.drawBitmap(Theme.CENTER_X - 110,
+                              y - icon.getHeight() / 2,
+                              icon);
+            }
+
             dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(Theme.CENTER_X - 90, rowY + i * rowH,
-                        Fonts.tiny(), PrayerNames.nameOf(sym),
+            dc.drawText(Theme.CENTER_X - 70, y,
+                        Fonts.small(), PrayerNames.nameOf(sym),
                         Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
-            dc.drawText(Theme.CENTER_X + 90, rowY + i * rowH,
-                        Fonts.tiny(), TimeFormatter.hhmm(t),
+            dc.drawText(Theme.CENTER_X + 90, y,
+                        Fonts.small(), TimeFormatter.hhmm(t),
                         Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
         }
+
+        // ---- Background-event diagnostic ----
+        // Stacked top/bottom of one another at the very bottom of the card.
+        var rec     = PrayerNotifier.getScheduled();
+        var err     = PrayerNotifier.getLastError();
+        var lastVib = PrayerNotifier.getLastVibrateTs();
+        var line1;
+        if (err != null) {
+            line1 = "err: " + err;
+        } else if (rec == null) {
+            line1 = "no vibrate scheduled";
+        } else {
+            var tsSec = rec["timestamp"];
+            var nameStr = rec["name"];
+            if (nameStr == null) { nameStr = "?"; }
+            if (nameStr.find(":") == 0) { nameStr = nameStr.substring(1, nameStr.length()); }
+            var mInfo = Gregorian.info(new Time.Moment(tsSec), Time.FORMAT_SHORT);
+            line1 = "alert " + nameStr + " "
+                  + _pad2(mInfo.hour) + ":" + _pad2(mInfo.min);
+        }
+        var line2 = "fired: never";
+        if (lastVib != null) {
+            var vm = Gregorian.info(new Time.Moment(lastVib), Time.FORMAT_SHORT);
+            line2 = "fired " + _pad2(vm.hour) + ":" + _pad2(vm.min);
+        }
+
+        dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, 386,
+                    Fonts.xtiny(), line1,
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(Theme.CENTER_X, 404,
+                    Fonts.xtiny(), line2,
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    function _pad2(n) {
+        if (n < 10) { return "0" + n; }
+        return "" + n;
     }
 
     function _drawCountdown(dc as Graphics.Dc, info, nowH) as Void {
@@ -201,21 +251,38 @@ class CardView extends WatchUi.View {
                     TimeFormatter.countdown(secsLeft),
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
-        // The actual prayer time itself, smaller.
+        // The actual prayer time itself, smaller. Format depends on locale —
+        // ru/en: "at 19:09" / kk: "сағат 19:09".
+        var lang = Settings.language();
+        var atLabel = lang.equals("kk") ? "сағат" : (lang.equals("ru") ? "в" : "at");
         dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 320,
+        dc.drawText(Theme.CENTER_X, 288,
                     Fonts.small(),
-                    "@ " + TimeFormatter.hhmm(time),
+                    atLabel + " " + TimeFormatter.hhmm(time),
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        _drawClockAndDate(dc, info);
     }
 
     function _drawPrayer(dc as Graphics.Dc, info, nowH, sym) as Void {
         var time = _times[sym];
 
+        // Icon + name on one row near the top — icon directly left of name.
+        var icon = _iconFor(sym);
+        var name = PrayerNames.nameOf(sym);
+        var nameFont = Fonts.medium();
+        var nameW = dc.getTextWidthInPixels(name, nameFont);
+        var iconW = (icon != null) ? icon.getWidth() : 0;
+        var groupW = iconW + (icon != null ? 8 : 0) + nameW;
+        var xStart = Theme.CENTER_X - groupW / 2;
+        if (icon != null) {
+            dc.drawBitmap(xStart, 90 - icon.getHeight() / 2, icon);
+            xStart += iconW + 8;
+        }
         dc.setColor(Theme.COLOR_ACCENT, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 58,
-                    Fonts.medium(), PrayerNames.nameOf(sym),
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(xStart, 90,
+                    nameFont, name,
+                    Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
 
         dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
         dc.drawText(Theme.CENTER_X, 170,
@@ -235,16 +302,36 @@ class CardView extends WatchUi.View {
                 label = "+" + TimeFormatter.countdown((-deltaH * 3600.0d).toNumber());
             }
             dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(Theme.CENTER_X, 270,
+            dc.drawText(Theme.CENTER_X, 244,
                         Fonts.small(), label,
                         Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         }
 
+        _drawClockAndDate(dc, info);
+    }
+
+    // Top-of-card current clock; bottom Greg + Hijri dates.
+    // Shared by countdown and per-prayer detail cards.
+    function _drawClockAndDate(dc as Graphics.Dc, info) as Void {
+        // Current clock at top centre.
+        var clockStr = _pad2(info.hour) + ":" + _pad2(info.min);
+        dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, 24,
+                    Fonts.xtiny(), clockStr,
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        // Bottom: Greg + Hijri.
+        var monthStr = PrayerNames.monthShort(info.month);
+        var gregStr  = info.day + " " + monthStr + " " + info.year;
         var hd = HijriDate.fromGregorian(info.year, info.month, info.day);
+        var hijriStr = hd[:day] + " " + HijriDate.monthName(hd[:month]) + " " + hd[:year];
+
         dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 340,
-                    Fonts.xtiny(),
-                    hd[:day] + " " + HijriDate.monthName(hd[:month]),
+        dc.drawText(Theme.CENTER_X, 338,
+                    Fonts.tiny(), gregStr,
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(Theme.CENTER_X, 360,
+                    Fonts.tiny(), hijriStr,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
@@ -253,6 +340,17 @@ class CardView extends WatchUi.View {
         if (sym == nextSym)   { return Theme.COLOR_ACCENT; }
         if (time < nowH)      { return Theme.COLOR_TEXT_DIM; }
         return Theme.COLOR_TEXT;
+    }
+
+    function _iconFor(sym) {
+        if (sym == :fajr)     { return WatchUi.loadResource(Rez.Drawables.IconFajr); }
+        if (sym == :sunrise)  { return WatchUi.loadResource(Rez.Drawables.IconSunrise); }
+        if (sym == :dhuhr)    { return WatchUi.loadResource(Rez.Drawables.IconDhuhr); }
+        if (sym == :asr)      { return WatchUi.loadResource(Rez.Drawables.IconAsr); }
+        if (sym == :maghrib)  { return WatchUi.loadResource(Rez.Drawables.IconMaghrib); }
+        if (sym == :isha)     { return WatchUi.loadResource(Rez.Drawables.IconIsha); }
+        if (sym == :tahajjud) { return WatchUi.loadResource(Rez.Drawables.IconTahajjud); }
+        return null;
     }
 
     function _resolveCityLabel(loc) {
