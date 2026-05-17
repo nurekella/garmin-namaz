@@ -183,40 +183,6 @@ class CardView extends WatchUi.View {
                         Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
         }
 
-        // ---- Background-event diagnostic ----
-        // Stacked top/bottom of one another at the very bottom of the card.
-        var rec     = PrayerNotifier.getScheduled();
-        var err     = PrayerNotifier.getLastError();
-        var lastVib = PrayerNotifier.getLastVibrateTs();
-        var line1;
-        if (err != null) {
-            line1 = "err: " + err;
-        } else if (rec == null) {
-            line1 = "no vibrate scheduled";
-        } else {
-            var tsSec = rec["timestamp"];
-            var nameStr = rec["name"];
-            if (nameStr == null) { nameStr = "?"; }
-            // Some firmwares render Symbol.toString() as "symbol (NNN)" using
-            // a hash. Strip the hash to a readable name when we can.
-            nameStr = _normalizePrayerName(nameStr);
-            var mInfo = Gregorian.info(new Time.Moment(tsSec), Time.FORMAT_SHORT);
-            line1 = "alert " + nameStr + " "
-                  + _pad2(mInfo.hour) + ":" + _pad2(mInfo.min);
-        }
-        var line2 = "fired: never";
-        if (lastVib != null) {
-            var vm = Gregorian.info(new Time.Moment(lastVib), Time.FORMAT_SHORT);
-            line2 = "fired " + _pad2(vm.hour) + ":" + _pad2(vm.min);
-        }
-
-        dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 386,
-                    Fonts.xtiny(), line1,
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-        dc.drawText(Theme.CENTER_X, 404,
-                    Fonts.xtiny(), line2,
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
     function _pad2(n) {
