@@ -143,14 +143,23 @@ class CardView extends WatchUi.View {
                     Fonts.small(), cityLabel,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
+        // ---- Friday Jumu'ah strip: overrides the city line once a week ----
+        if (info.day_of_week == 6) {
+            var lang = Settings.language();
+            var jumLabel = lang.equals("kk") ? "Жұма" : (lang.equals("ru") ? "Жума" : "Jumu'ah");
+            dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
+            dc.drawText(Theme.CENTER_X, 116,
+                        Fonts.small(), jumLabel,
+                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        }
+
         // ---- 6 prayers ----
         var nextEntry = _calc.getNextPrayer(_times, nowH);
         var nextSym = (nextEntry != null) ? nextEntry[:name] : null;
-        // Sunrise and Tahajjud get their own swipeable cards so the
-        // overview can show 5 mandatory prayers with a bigger font.
-        var prayers = [:fajr, :dhuhr, :asr, :maghrib, :isha];
-        var rowY = 156;
-        var rowH = 44;
+        // 6 rows including Sunrise (Tahajjud stays on its own swipe card).
+        var prayers = [:fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha];
+        var rowY = 148;
+        var rowH = 40;
         for (var i = 0; i < prayers.size(); i++) {
             var sym = prayers[i];
             var t   = _times[sym];
@@ -188,7 +197,9 @@ class CardView extends WatchUi.View {
             var tsSec = rec["timestamp"];
             var nameStr = rec["name"];
             if (nameStr == null) { nameStr = "?"; }
-            if (nameStr.find(":") == 0) { nameStr = nameStr.substring(1, nameStr.length()); }
+            // Some firmwares render Symbol.toString() as "symbol (NNN)" using
+            // a hash. Strip the hash to a readable name when we can.
+            nameStr = _normalizePrayerName(nameStr);
             var mInfo = Gregorian.info(new Time.Moment(tsSec), Time.FORMAT_SHORT);
             line1 = "alert " + nameStr + " "
                   + _pad2(mInfo.hour) + ":" + _pad2(mInfo.min);
@@ -239,7 +250,7 @@ class CardView extends WatchUi.View {
                     Fonts.tiny(), PrayerNames.nextLabel(),
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
-        dc.setColor(Theme.COLOR_ACCENT, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
         dc.drawText(Theme.CENTER_X, 120,
                     Fonts.medium(), name,
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
@@ -279,7 +290,7 @@ class CardView extends WatchUi.View {
             dc.drawBitmap(xStart, 90 - icon.getHeight() / 2, icon);
             xStart += iconW + 8;
         }
-        dc.setColor(Theme.COLOR_ACCENT, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
         dc.drawText(xStart, 90,
                     nameFont, name,
                     Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
@@ -337,10 +348,12 @@ class CardView extends WatchUi.View {
 
     function _colorFor(sym, nextSym, time, nowH) {
         if (time == null)     { return Theme.COLOR_TEXT_MUTED; }
-        if (sym == nextSym)   { return Theme.COLOR_ACCENT; }
+        if (sym == nextSym)   { return Theme.accent(); }
         if (time < nowH)      { return Theme.COLOR_TEXT_DIM; }
         return Theme.COLOR_TEXT;
     }
+
+    // (Theme.accent already replaced via global edit.)
 
     function _iconFor(sym) {
         if (sym == :fajr)     { return WatchUi.loadResource(Rez.Drawables.IconFajr); }
@@ -366,6 +379,27 @@ class CardView extends WatchUi.View {
         return "";
     }
 
+    function _normalizePrayerName(raw) {
+        // Strip leading colon from ":fajr"-style symbols.
+        if (raw.find(":") == 0) {
+            return raw.substring(1, raw.length());
+        }
+        // Map "symbol (NNN)" hash-form back to known names by comparing
+        // the toString of each known symbol once. Cheap.
+        var known = [:fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha];
+        for (var i = 0; i < known.size(); i++) {
+            if (known[i].toString().equals(raw)) {
+                if (known[i] == :fajr)    { return "Fajr"; }
+                if (known[i] == :sunrise) { return "Sunrise"; }
+                if (known[i] == :dhuhr)   { return "Dhuhr"; }
+                if (known[i] == :asr)     { return "Asr"; }
+                if (known[i] == :maghrib) { return "Maghrib"; }
+                if (known[i] == :isha)    { return "Isha"; }
+            }
+        }
+        return raw;
+    }
+
     function _drawPagerDots(dc as Graphics.Dc) as Void {
         var n = ORDER.size();
         var spacing = 16;
@@ -374,7 +408,7 @@ class CardView extends WatchUi.View {
         var y  = 380;
         for (var i = 0; i < n; i++) {
             if (i == _idx) {
-                dc.setColor(Theme.COLOR_ACCENT, Graphics.COLOR_TRANSPARENT);
+                dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
                 dc.fillCircle(x0 + i * spacing, y, 4);
             } else {
                 dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);

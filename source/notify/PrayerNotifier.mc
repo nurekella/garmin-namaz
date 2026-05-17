@@ -25,9 +25,40 @@ module PrayerNotifier {
     const STORAGE_KEY_LASTVIBE = "last_vibrate_ts";
     const MIN_SCHEDULE_GAP_SEC = 5 * 60;
 
-    // 3 pulses x 500 ms separated by 300 ms — distinct enough from
-    // notification chatter, short enough to not annoy.
+    // 4 user-selectable patterns — Settings.vibePatternIdx picks one.
+    //   0 = Standard  (3 pulses × 500 ms, default)
+    //   1 = Short     (1 pulse  × 600 ms)
+    //   2 = Long      (5 pulses × 500 ms)
+    //   3 = Double    (2 short pulses tight together)
     function getVibePattern() {
+        var idx = 0;
+        if (Toybox has :Application) {
+            idx = Settings.vibePatternIdx();
+        }
+        if (idx == 1) {
+            return [ new Attention.VibeProfile(100, 600) ];
+        }
+        if (idx == 2) {
+            return [
+                new Attention.VibeProfile(100, 500),
+                new Attention.VibeProfile(0,   250),
+                new Attention.VibeProfile(100, 500),
+                new Attention.VibeProfile(0,   250),
+                new Attention.VibeProfile(100, 500),
+                new Attention.VibeProfile(0,   250),
+                new Attention.VibeProfile(100, 500),
+                new Attention.VibeProfile(0,   250),
+                new Attention.VibeProfile(100, 500)
+            ];
+        }
+        if (idx == 3) {
+            return [
+                new Attention.VibeProfile(100, 200),
+                new Attention.VibeProfile(0,   120),
+                new Attention.VibeProfile(100, 200)
+            ];
+        }
+        // default — Standard
         return [
             new Attention.VibeProfile(100, 500),
             new Attention.VibeProfile(0,   300),
@@ -127,6 +158,15 @@ module PrayerNotifier {
 
     // ---------- internal ----------
 
+    // Pre-alert minutes for the named prayer; reads user setting via
+    // Settings (no-op when Settings module isn't available, e.g. some
+    // test scopes).
+    function _prealertFor(sym) {
+        if (!(Toybox has :Application)) { return 0; }
+        if (sym == :fajr) { return Settings.prealertFajrMinutes(); }
+        return Settings.prealertOtherMinutes();
+    }
+
     // Walks today's obligatory prayer slots; if none qualifies (all
     // already past or inside the 5-min lockout), rolls to tomorrow's
     // Fajr. Returns null if even tomorrow's Fajr is unavailable
@@ -157,7 +197,13 @@ module PrayerNotifier {
         }
 
         if (bestSym != null) {
-            var deltaSec = ((bestTime - nowH) * 3600.0d).toNumber();
+            var preMin = _prealertFor(bestSym);
+            var deltaSec = ((bestTime - nowH) * 3600.0d).toNumber() - preMin * 60;
+            // Don't shift the alert into the past; if the pre-alert window
+            // straddles the 5-min floor, fall back to no pre-alert.
+            if (deltaSec < MIN_SCHEDULE_GAP_SEC) {
+                deltaSec = ((bestTime - nowH) * 3600.0d).toNumber();
+            }
             return {
                 :name         => bestSym,
                 :timestampSec => nowSec + deltaSec

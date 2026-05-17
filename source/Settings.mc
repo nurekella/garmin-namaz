@@ -12,6 +12,11 @@ using Toybox.System;
 (:background, :glance)
 module Settings {
 
+    // Hardcoded mirror of manifest.xml version="..." — Connect IQ doesn't
+    // expose manifest values at runtime, so the on-watch settings menu
+    // shows this constant. Bump in lockstep with the manifest.
+    const VERSION = "1.5.0";
+
     // "kk" / "ru" / "en" — falls back to the system Rez locale when user
     // chose "auto" or never opened settings.
     // Returns "kk" / "ru" / "en". Works in app, glance, and background
@@ -48,6 +53,32 @@ module Settings {
         var v = Application.Properties.getValue("prealertMin");
         if (v == null) { return 0; }
         return v.toNumber();
+    }
+
+    function prealertFajrMinutes() {
+        var v = Application.Properties.getValue("prealertFajr");
+        if (v == null) { return prealertMinutes(); }   // legacy fallback
+        return v.toNumber();
+    }
+
+    function prealertOtherMinutes() {
+        var v = Application.Properties.getValue("prealertOther");
+        if (v == null) { return prealertMinutes(); }
+        return v.toNumber();
+    }
+
+    function vibePatternIdx() {
+        var v = Application.Properties.getValue("vibePattern");
+        if (v == null) { return 0; }
+        return v.toNumber();
+    }
+
+    function themeIdx() {
+        var v = Application.Properties.getValue("themeIdx");
+        if (v == null) { return 0; }
+        var idx = v.toNumber();
+        if (idx < 0 || idx > 3) { return 0; }
+        return idx;
     }
 
     // Returns the per-prayer offset dictionary in the shape

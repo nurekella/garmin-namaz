@@ -32,7 +32,15 @@ class SettingsMenu extends WatchUi.Menu2 {
         addItem(new WatchUi.MenuItem(
             "Notifications", _notifySubLabel(), :notify, null));
         addItem(new WatchUi.MenuItem(
+            "Vibe pattern", _vibeSubLabel(), :vibe, null));
+        addItem(new WatchUi.MenuItem(
+            "Theme", _themeSubLabel(), :theme, null));
+        addItem(new WatchUi.MenuItem(
+            "Qibla", null, :qibla, null));
+        addItem(new WatchUi.MenuItem(
             "Test vibration", null, :testVibe, null));
+        addItem(new WatchUi.MenuItem(
+            "Version", Settings.VERSION, :version, null));
         addItem(new WatchUi.MenuItem(
             "Language", _langSubLabel(), :lang, null));
         addItem(new WatchUi.MenuItem(
@@ -58,6 +66,22 @@ class SettingsMenu extends WatchUi.Menu2 {
 
     function _notifySubLabel() as Lang.String {
         return Settings.notificationsEnabled() ? "On" : "Off";
+    }
+
+    function _vibeSubLabel() as Lang.String {
+        var idx = Settings.vibePatternIdx();
+        if (idx == 1) { return "Short"; }
+        if (idx == 2) { return "Long"; }
+        if (idx == 3) { return "Double"; }
+        return "Standard";
+    }
+
+    function _themeSubLabel() as Lang.String {
+        var idx = Settings.themeIdx();
+        if (idx == 1) { return "Mint"; }
+        if (idx == 2) { return "Sky"; }
+        if (idx == 3) { return "Mono"; }
+        return "Bronze";
     }
 
     function _langSubLabel() as Lang.String {
@@ -130,6 +154,16 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             var cur = Settings.notificationsEnabled();
             Application.Properties.setValue("notify", !cur);
             _applyAndRefresh();
+        } else if (id == :vibe) {
+            var menu = new VibePickerMenu();
+            WatchUi.pushView(menu, new VibePickerDelegate(_menu), WatchUi.SLIDE_LEFT);
+        } else if (id == :theme) {
+            var menu = new ThemePickerMenu();
+            WatchUi.pushView(menu, new ThemePickerDelegate(_menu), WatchUi.SLIDE_LEFT);
+        } else if (id == :qibla) {
+            WatchUi.pushView(new QiblaView(),
+                             new QiblaDelegate(),
+                             WatchUi.SLIDE_LEFT);
         } else if (id == :testVibe) {
             // Bypass the notify gate so the user can confirm Attention.vibrate
             // works on this device regardless of the toggle.
@@ -376,6 +410,67 @@ class MethodPickerMenu extends WatchUi.Menu2 {
                 i, null));
         }
     }
+}
+
+// ---- Vibration / Theme pickers ---------------------------------------
+
+class VibePickerMenu extends WatchUi.Menu2 {
+    static const ENTRIES = [[0, "Standard"], [1, "Short"], [2, "Long"], [3, "Double"]];
+    function initialize() {
+        Menu2.initialize({ :title => "Vibe pattern" });
+        var cur = Settings.vibePatternIdx();
+        for (var i = 0; i < ENTRIES.size(); i++) {
+            addItem(new WatchUi.MenuItem(
+                ENTRIES[i][1], (cur == ENTRIES[i][0]) ? "*" : null,
+                ENTRIES[i][0], null));
+        }
+    }
+}
+
+class VibePickerDelegate extends WatchUi.Menu2InputDelegate {
+    var _parent;
+    function initialize(parent) { Menu2InputDelegate.initialize(); _parent = parent; }
+    function onSelect(item) as Void {
+        var id = item.getId();
+        if (!(id instanceof Lang.Number)) { return; }
+        Application.Properties.setValue("vibePattern", id);
+        var app = Application.getApp();
+        if (app != null && app has :onSettingsChanged) { app.onSettingsChanged(); }
+        if (_parent != null && _parent has :refreshSubLabels) { _parent.refreshSubLabels(); }
+        // Demo the new pattern immediately.
+        if (Toybox has :Attention && Attention has :vibrate) {
+            Attention.vibrate(PrayerNotifier.getVibePattern());
+        }
+        WatchUi.popView(WatchUi.SLIDE_RIGHT);
+    }
+    function onBack() as Void { WatchUi.popView(WatchUi.SLIDE_RIGHT); }
+}
+
+class ThemePickerMenu extends WatchUi.Menu2 {
+    static const ENTRIES = [[0, "Bronze"], [1, "Mint"], [2, "Sky"], [3, "Mono"]];
+    function initialize() {
+        Menu2.initialize({ :title => "Theme" });
+        var cur = Settings.themeIdx();
+        for (var i = 0; i < ENTRIES.size(); i++) {
+            addItem(new WatchUi.MenuItem(
+                ENTRIES[i][1], (cur == ENTRIES[i][0]) ? "*" : null,
+                ENTRIES[i][0], null));
+        }
+    }
+}
+
+class ThemePickerDelegate extends WatchUi.Menu2InputDelegate {
+    var _parent;
+    function initialize(parent) { Menu2InputDelegate.initialize(); _parent = parent; }
+    function onSelect(item) as Void {
+        var id = item.getId();
+        if (!(id instanceof Lang.Number)) { return; }
+        Application.Properties.setValue("themeIdx", id);
+        if (_parent != null && _parent has :refreshSubLabels) { _parent.refreshSubLabels(); }
+        WatchUi.popView(WatchUi.SLIDE_RIGHT);
+        WatchUi.requestUpdate();
+    }
+    function onBack() as Void { WatchUi.popView(WatchUi.SLIDE_RIGHT); }
 }
 
 class MethodPickerDelegate extends WatchUi.Menu2InputDelegate {
