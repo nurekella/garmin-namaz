@@ -15,7 +15,7 @@ module Settings {
     // Hardcoded mirror of manifest.xml version="..." — Connect IQ doesn't
     // expose manifest values at runtime, so the on-watch settings menu
     // shows this constant. Bump in lockstep with the manifest.
-    const VERSION = "1.5.1";
+    const VERSION = "1.6.0";
 
     // "kk" / "ru" / "en" — falls back to the system Rez locale when user
     // chose "auto" or never opened settings.

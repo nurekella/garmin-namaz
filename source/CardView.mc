@@ -17,7 +17,7 @@ using Toybox.Lang;
 //   y=380  position dots — current card filled
 class CardView extends WatchUi.View {
 
-    static const ORDER = [:overview, :countdown, :fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha, :tahajjud];
+    static const ORDER = [:overview, :countdown, :week, :fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha, :tahajjud];
 
     var _calc;
     var _location;
@@ -112,6 +112,8 @@ class CardView extends WatchUi.View {
             _drawOverview(dc, info, nowH);
         } else if (sym == :countdown) {
             _drawCountdown(dc, info, nowH);
+        } else if (sym == :week) {
+            _drawWeek(dc, info);
         } else {
             _drawPrayer(dc, info, nowH, sym);
         }
@@ -183,6 +185,97 @@ class CardView extends WatchUi.View {
                         Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
         }
 
+        _drawDayProgress(dc, nowH);
+    }
+
+    // 7 days of upcoming Fajr / Maghrib in a compact table — for planning
+    // sahoor / iftar without having to swipe through each day's detail.
+    function _drawWeek(dc as Graphics.Dc, info) as Void {
+        var loc = _location.getCurrentLocation();
+        if (loc == null) { return; }
+
+        // Header
+        dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, 50, Fonts.tiny(), "7 DAYS",
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        // Sub-headers — Day / Fajr / Maghrib
+        dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
+        var headerY = 82;
+        dc.drawText(Theme.CENTER_X - 100, headerY, Fonts.xtiny(), "Day",
+                    Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(Theme.CENTER_X, headerY, Fonts.xtiny(),
+                    PrayerNames.nameOf(:fajr),
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(Theme.CENTER_X + 100, headerY, Fonts.xtiny(),
+                    PrayerNames.nameOf(:maghrib),
+                    Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        var rowY = 110;
+        var rowH = 36;
+        for (var i = 0; i < 7; i++) {
+            var moment = Time.now().add(new Time.Duration(i * 86400));
+            var di = Gregorian.info(moment, Time.FORMAT_SHORT);
+            var times = _calc.calculate(loc[:lat], loc[:lon],
+                di.year, di.month, di.day, loc[:tz]);
+            var y = rowY + i * rowH;
+            var color = (i == 0) ? Theme.accent() : Theme.COLOR_TEXT;
+
+            dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(Theme.CENTER_X - 100, y,
+                        Fonts.tiny(), _dayLabel(di.day_of_week, i),
+                        Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+            dc.drawText(Theme.CENTER_X, y,
+                        Fonts.tiny(), TimeFormatter.hhmm(times[:fajr]),
+                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            dc.drawText(Theme.CENTER_X + 100, y,
+                        Fonts.tiny(), TimeFormatter.hhmm(times[:maghrib]),
+                        Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
+        }
+    }
+
+    function _dayLabel(dow, daysFromToday) {
+        if (daysFromToday == 0) {
+            var lang = Settings.language();
+            if (lang.equals("kk")) { return "Бүгін"; }
+            if (lang.equals("ru")) { return "Сегодня"; }
+            return "Today";
+        }
+        var lang = Settings.language();
+        if (lang.equals("kk")) {
+            var kk = ["Жк", "Дс", "Сс", "Ср", "Бс", "Жм", "Сн"];
+            return kk[(dow - 1) % 7];
+        }
+        if (lang.equals("ru")) {
+            var ru = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+            return ru[(dow - 1) % 7];
+        }
+        var en = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        return en[(dow - 1) % 7];
+    }
+
+    // Slim progress bar under the prayer rows. Maps current time onto the
+    // Fajr -> Isha span — 0% at Fajr, 100% at Isha. Outside that range the
+    // bar is empty (night) or full (after Isha).
+    function _drawDayProgress(dc as Graphics.Dc, nowH) as Void {
+        var fajr = _times[:fajr];
+        var isha = _times[:isha];
+        if (fajr == null || isha == null) { return; }
+
+        var ratio;
+        if (nowH < fajr)      { ratio = 0.0d; }
+        else if (nowH > isha) { ratio = 1.0d; }
+        else                  { ratio = (nowH - fajr) / (isha - fajr); }
+
+        var barW = 280;
+        var barX = Theme.CENTER_X - barW / 2;
+        var barY = 396;
+        // Track
+        dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(barX, barY, barW, 4);
+        // Fill — accent.
+        dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(barX, barY, (barW * ratio).toNumber(), 4);
     }
 
     function _pad2(n) {
