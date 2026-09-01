@@ -55,4 +55,46 @@
     <string id="HijriMonth10">Шәууал</string>
     <string id="HijriMonth11">Зул-қағда</string>
     <string id="HijriMonth12">Зул-хижжа</string>
+
+    <!-- Settings menu (1.7.0) -->
+    <string id="SettingPrealertFajr">Алдын-ала: Таң</string>
+    <string id="SettingPrealertOther">Алдын-ала: басқа намаздар</string>
+    <string id="SettingMethod">Әдіс</string>
+    <string id="SettingNotify">Хабарландыру</string>
+    <string id="SettingVibe">Дірілдеу</string>
+    <string id="SettingTheme">Тақырып</string>
+    <string id="SettingQibla">Құбыла</string>
+    <string id="SettingTestVibe">Дірілді тексеру</string>
+    <string id="SettingVersion">Нұсқа</string>
+    <string id="SettingLanguage">Тіл</string>
+    <string id="SettingOffsets">Түзетулер</string>
+    <string id="On">Қосулы</string>
+    <string id="VibeStandard">Стандарт (3)</string>
+    <string id="VibeShort">Қысқа (1)</string>
+    <string id="VibeLong">Ұзақ (5)</string>
+    <string id="VibeDouble">Қос</string>
+    <string id="ThemeBronze">Қола</string>
+    <string id="ThemeMint">Жалбыз</string>
+    <string id="ThemeSky">Аспан</string>
+    <string id="ThemeMono">Моно</string>
+    <string id="LangAuto">Авто</string>
+    <string id="LangKazakh">Қазақша</string>
+    <string id="LangRussian">Орысша</string>
+    <string id="LangEnglish">Ағылшынша</string>
+    <string id="CityAlmaty">Алматы</string>
+    <string id="CityAstana">Астана</string>
+    <string id="CityShymkent">Шымкент</string>
+    <string id="CityKaraganda">Қарағанды</string>
+    <string id="CityAktobe">Ақтөбе</string>
+    <string id="CityTaraz">Тараз</string>
+    <string id="CityPavlodar">Павлодар</string>
+    <string id="CityOskemen">Өскемен</string>
+    <string id="CitySemey">Семей</string>
+    <string id="CityAtyrau">Атырау</string>
+    <string id="CityKostanay">Қостанай</string>
+    <string id="CityKyzylorda">Қызылорда</string>
+    <string id="CityUralsk">Орал</string>
+    <string id="CityPetropavl">Петропавл</string>
+    <string id="CityAktau">Ақтау</string>
+    <string id="CityTurkestan">Түркістан</string>
 </strings>

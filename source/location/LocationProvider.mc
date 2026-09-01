@@ -1,4 +1,5 @@
 using Toybox.Position;
+using Toybox.System;
 using Toybox.Time;
 using Toybox.Lang;
 using Toybox.Math;
@@ -16,9 +17,10 @@ using Toybox.Math;
 // GPS at every UI refresh would tank battery. Any GPS fix we do see is
 // written back to Storage so subsequent reads stay fast.
 //
-// Time zone: hard-coded UTC+5 for KZ. If the watch is taken abroad we
-// still report tz=5 — for v1.0 KZ-only this is correct; v1.1 should
-// resolve tz from longitude or system clock.
+// Time zone: always the watch's own clock offset (System.getClockTime,
+// DST included). Prayer times are compared against the watch clock, so
+// they must be expressed in the same zone — even when a manual city in
+// another zone is selected, the user still reads them off this watch.
 (:glance, :background)
 class LocationProvider {
 
@@ -26,12 +28,25 @@ class LocationProvider {
     static const KEY_MANUAL_CITY   = "manual_city";
     static const DEFAULT_TTL_SEC   = 86400;   // 24 hours
     static const SIGNIFICANT_KM    = 5.0d;    // movement that invalidates cache early
-    static const KZ_TZ_HOURS       = 5;
+    static const KZ_TZ_HOURS       = 5;       // used only if the system clock is unavailable
 
     var _gpsActive;
 
     function initialize() {
         _gpsActive = false;
+    }
+
+    // Current UTC offset of the watch clock in fractional hours
+    // (e.g. 5.0 for Almaty, 5.5 for India, -7.0 for PDT).
+    static function systemTzHours() {
+        try {
+            var ct = System.getClockTime();
+            if (ct != null && ct.timeZoneOffset != null) {
+                return ct.timeZoneOffset.toDouble() / 3600.0d;
+            }
+        } catch (e) {
+        }
+        return KZ_TZ_HOURS.toDouble();
     }
 
     // Synchronous best-effort lookup. Never blocks on GPS — `requestFix`
@@ -105,7 +120,7 @@ class LocationProvider {
         return {
             :lat       => degs[0].toDouble(),
             :lon       => degs[1].toDouble(),
-            :tz        => KZ_TZ_HOURS,
+            :tz        => systemTzHours(),
             :timestamp => ts,
             :accuracy  => acc,
             :source    => :gps
@@ -131,13 +146,13 @@ class LocationProvider {
     //
     // Application.Storage rejects Symbol values, so we project our
     // Symbol-keyed dictionary onto a String-keyed one before persisting
-    // and rebuild the canonical shape on read.
+    // and rebuild the canonical shape on read. The time zone is NOT
+    // persisted — it is always re-read from the system clock.
 
     function _serialize(loc) {
         return {
             "lat"       => loc[:lat],
             "lon"       => loc[:lon],
-            "tz"        => loc[:tz],
             "timestamp" => loc[:timestamp],
             "accuracy"  => loc[:accuracy]
         };
@@ -148,7 +163,7 @@ class LocationProvider {
         return {
             :lat       => raw["lat"],
             :lon       => raw["lon"],
-            :tz        => raw["tz"],
+            :tz        => systemTzHours(),
             :timestamp => raw["timestamp"],
             :accuracy  => raw["accuracy"],
             :source    => :cached
@@ -186,7 +201,7 @@ class LocationProvider {
         return {
             :lat    => city[:lat],
             :lon    => city[:lon],
-            :tz     => city[:tz],
+            :tz     => systemTzHours(),
             :cityId => city[:id],
             :source => source
         };

@@ -12,6 +12,9 @@ using Toybox.Lang;
 // built-in tiers within ±2 px on the 416×416 face.
 //
 // Fonts are cached per size — getVectorFont allocates on every call.
+//
+// Also used by the glance so Kazakh letters render there too.
+(:glance)
 module Fonts {
 
     var _cache = {};

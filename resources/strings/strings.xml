@@ -55,4 +55,46 @@
     <string id="HijriMonth10">Shawwal</string>
     <string id="HijriMonth11">Dhul-Qadah</string>
     <string id="HijriMonth12">Dhul-Hijjah</string>
+
+    <!-- Settings menu (1.7.0) -->
+    <string id="SettingPrealertFajr">Pre-alert: Fajr</string>
+    <string id="SettingPrealertOther">Pre-alert: other prayers</string>
+    <string id="SettingMethod">Method</string>
+    <string id="SettingNotify">Notifications</string>
+    <string id="SettingVibe">Vibration</string>
+    <string id="SettingTheme">Theme</string>
+    <string id="SettingQibla">Qibla</string>
+    <string id="SettingTestVibe">Test vibration</string>
+    <string id="SettingVersion">Version</string>
+    <string id="SettingLanguage">Language</string>
+    <string id="SettingOffsets">Offsets</string>
+    <string id="On">On</string>
+    <string id="VibeStandard">Standard (3)</string>
+    <string id="VibeShort">Short (1)</string>
+    <string id="VibeLong">Long (5)</string>
+    <string id="VibeDouble">Double</string>
+    <string id="ThemeBronze">Bronze</string>
+    <string id="ThemeMint">Mint</string>
+    <string id="ThemeSky">Sky</string>
+    <string id="ThemeMono">Mono</string>
+    <string id="LangAuto">Auto</string>
+    <string id="LangKazakh">Kazakh</string>
+    <string id="LangRussian">Russian</string>
+    <string id="LangEnglish">English</string>
+    <string id="CityAlmaty">Almaty</string>
+    <string id="CityAstana">Astana</string>
+    <string id="CityShymkent">Shymkent</string>
+    <string id="CityKaraganda">Karaganda</string>
+    <string id="CityAktobe">Aktobe</string>
+    <string id="CityTaraz">Taraz</string>
+    <string id="CityPavlodar">Pavlodar</string>
+    <string id="CityOskemen">Oskemen</string>
+    <string id="CitySemey">Semey</string>
+    <string id="CityAtyrau">Atyrau</string>
+    <string id="CityKostanay">Kostanay</string>
+    <string id="CityKyzylorda">Kyzylorda</string>
+    <string id="CityUralsk">Uralsk</string>
+    <string id="CityPetropavl">Petropavl</string>
+    <string id="CityAktau">Aktau</string>
+    <string id="CityTurkestan">Turkestan</string>
 </strings>

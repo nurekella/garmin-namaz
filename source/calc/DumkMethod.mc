@@ -2,23 +2,31 @@ using Toybox.Lang;
 
 // Қазақстан мұсылмандары діни басқармасы (ҚМДБ / DUMK) prayer-time method.
 //
-// Calibrated against https://api.muftyat.kz/prayer-times/ for Almaty,
-// Astana and Shymkent at 4 reference dates in 2026 (Jan 1, Apr 29, Jun 21,
-// Dec 21). With the constants below the calculator stays within ±2.5 min
-// of the official ҚМДБ schedule for those cities; mean residual ≤ 1.5 min.
-// See `tests/PrayerCalculatorTest.mc` for the comparison harness.
+// Reverse-engineered from https://api.muftyat.kz/prayer-times/ using the
+// full 2026 schedule for all 16 regional centres plus ~40 smaller
+// settlements (see tests/PrayerCalculatorTest.mc for the fixture):
 //
-// The `:offsets` dictionary bakes in the calibration. User-level per-prayer
-// offsets (from settings) are applied on top by PrayerCalculator and do
-// not replace these.
+//   * Fajr and Isha: sun 15° below the horizon, no extra offset.
+//   * Sunrise / sunset: standard 0.833° (refraction + solar radius).
+//   * High latitudes: praytimes.org "angle based" rule — twilight is
+//     capped at (15/60) of the night. This is what ҚМДБ publishes for
+//     Astana / Petropavl / Kostanay from mid-May to end of July.
+//   * Precaution (ихтият): +3 min on Dhuhr / Asr / Maghrib and -3 min on
+//     sunrise for latitudes below 48°N; +5 / -5 min at 48°N and above.
+//     The switch is sharp at exactly 48.0° (47.88°N -> 3, 48.00°N -> 5).
+//   * Asr: Hanafi (shadow = 2× object height).
+//
+// With these rules the calculator matches muftyat.kz within ±1 minute
+// (i.e. within their minute rounding) for every city, every day of 2026.
 (:glance, :background)
 module DumkMethod {
 
     const ID              = "DUMK";
-    const FAJR_ANGLE      = 15.5d;   // sun degrees below horizon at Fajr
-    const ISHA_ANGLE      = 15.5d;   // sun degrees below horizon at Isha
-    const SUNRISE_ANGLE   = 1.0d;    // refraction + disk rim convention used by ҚМДБ
+    const FAJR_ANGLE      = 15.0d;   // sun degrees below horizon at Fajr
+    const ISHA_ANGLE      = 15.0d;   // sun degrees below horizon at Isha
+    const SUNRISE_ANGLE   = 0.833d;
     const DEFAULT_ASR     = 2;       // 1 = Standard, 2 = Hanafi (ҚМДБ uses Hanafi)
+    const PRECAUTION_LAT  = 48.0d;   // latitude at which ихтият goes 3 -> 5 min
 
     function params() {
         return {
@@ -26,14 +34,9 @@ module DumkMethod {
             :fajrAngle    => FAJR_ANGLE,
             :ishaAngle    => ISHA_ANGLE,
             :sunriseAngle => SUNRISE_ANGLE,
-            :offsets      => {
-                :fajr    =>  3,
-                :sunrise => -2,
-                :dhuhr   =>  2,
-                :asr     =>  3,
-                :maghrib =>  2,
-                :isha    => -3
-            }
+            :highLat      => :angleBased,
+            :precaution   => { :latSplit => PRECAUTION_LAT, :south => 3, :north => 5 },
+            :offsets      => {}
         };
     }
 }
@@ -53,7 +56,8 @@ module MwlMethod {
             :fajrAngle    => FAJR_ANGLE,
             :ishaAngle    => ISHA_ANGLE,
             :sunriseAngle => SUNRISE_ANGLE,
-            :offsets      => { :dhuhr => 0, :maghrib => 0 }
+            :highLat      => :angleBased,
+            :offsets      => {}
         };
     }
 }
@@ -73,7 +77,8 @@ module EgyptianMethod {
             :fajrAngle    => FAJR_ANGLE,
             :ishaAngle    => ISHA_ANGLE,
             :sunriseAngle => SUNRISE_ANGLE,
-            :offsets      => { :dhuhr => 0, :maghrib => 0 }
+            :highLat      => :angleBased,
+            :offsets      => {}
         };
     }
 }
@@ -84,7 +89,7 @@ module IsnaMethod {
     const ID = "ISNA";
     function params() {
         return { :id => ID, :fajrAngle => 15.0d, :ishaAngle => 15.0d,
-                 :sunriseAngle => 0.833d, :offsets => {} };
+                 :sunriseAngle => 0.833d, :highLat => :angleBased, :offsets => {} };
     }
 }
 
@@ -94,7 +99,7 @@ module KarachiMethod {
     const ID = "KARACHI";
     function params() {
         return { :id => ID, :fajrAngle => 18.0d, :ishaAngle => 18.0d,
-                 :sunriseAngle => 0.833d, :offsets => {} };
+                 :sunriseAngle => 0.833d, :highLat => :angleBased, :offsets => {} };
     }
 }
 
@@ -104,20 +109,21 @@ module DiyanetMethod {
     const ID = "DIYANET";
     function params() {
         return { :id => ID, :fajrAngle => 18.0d, :ishaAngle => 17.0d,
-                 :sunriseAngle => 0.833d,
+                 :sunriseAngle => 0.833d, :highLat => :angleBased,
                  :offsets => { :sunrise => -7, :dhuhr => 7, :maghrib => 9 } };
     }
 }
 
 // Umm al-Qura University, Makkah.
-// Isha is a fixed 90-minute interval after Maghrib (120 in Ramadan;
-// we don't track Ramadan in v1 so 90 stands year-round).
+// Isha is a fixed 90-minute interval after Maghrib, 120 minutes during
+// Ramadan (the Ramadan check uses the Hijri date of the coming night).
 (:glance, :background)
 module UmmAlQuraMethod {
     const ID = "UMM_AL_QURA";
     function params() {
-        return { :id => ID, :fajrAngle => 18.5d, :ishaIntervalMin => 90,
-                 :sunriseAngle => 0.833d, :offsets => {} };
+        return { :id => ID, :fajrAngle => 18.5d,
+                 :ishaIntervalMin => 90, :ishaIntervalRamadanMin => 120,
+                 :sunriseAngle => 0.833d, :highLat => :angleBased, :offsets => {} };
     }
 }
 
@@ -127,7 +133,7 @@ module TehranMethod {
     const ID = "TEHRAN";
     function params() {
         return { :id => ID, :fajrAngle => 17.7d, :ishaAngle => 14.0d,
-                 :sunriseAngle => 0.833d, :offsets => {} };
+                 :sunriseAngle => 0.833d, :highLat => :angleBased, :offsets => {} };
     }
 }
 
@@ -137,7 +143,7 @@ module JafariMethod {
     const ID = "JAFARI";
     function params() {
         return { :id => ID, :fajrAngle => 16.0d, :ishaAngle => 14.0d,
-                 :sunriseAngle => 0.833d, :offsets => {} };
+                 :sunriseAngle => 0.833d, :highLat => :angleBased, :offsets => {} };
     }
 }
 
@@ -148,7 +154,7 @@ module FixedIshaMethod {
     const ID = "FIXED_ISHA";
     function params() {
         return { :id => ID, :fajrAngle => 18.0d, :ishaIntervalMin => 90,
-                 :sunriseAngle => 0.833d, :offsets => {} };
+                 :sunriseAngle => 0.833d, :highLat => :angleBased, :offsets => {} };
     }
 }
 

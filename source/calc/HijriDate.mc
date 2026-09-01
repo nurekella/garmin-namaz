@@ -1,36 +1,88 @@
 using Toybox.Lang;
 
-// Gregorian -> Hijri date conversion using the Kuwaiti tabular algorithm
-// (also called "civil Islamic calendar"). 30-year cycle with 11 leap
-// years (2,5,7,10,13,16,18,21,24,26,29). Months alternate 30/29 days
-// for months 1..11; month 12 is 29 days in common years, 30 in leap.
+// Gregorian -> Hijri date conversion.
 //
-// Drift versus Umm al-Qura: most days agree exactly, occasional ±1 day
-// differences appear at month boundaries because Umm al-Qura uses
-// astronomical observation calibrations that the tabular algorithm
-// cannot capture without a per-year override table. For prayer-time
-// app context (a date label on the home screen) ±1 day is acceptable
-// in v1.0; v1.1 can swap in a Umm al-Qura override map for the years
-// the app actually targets.
+// Primary: Umm al-Qura calendar (the official Saudi civil calendar, also
+// what muftyat.kz prints) via a baked month-length table covering
+// 1440–1470 AH (Sep 2018 – Jun 2049). Each year is a 12-bit mask,
+// bit (m-1) set => month m has 30 days. The table was generated from
+// the `hijridate` Python package, which implements the published
+// Umm al-Qura data.
+//
+// Fallback outside the table: Kuwaiti tabular algorithm (30-year cycle
+// with 11 leap years), accurate to ±1 day at month boundaries.
 //
 // Reference: https://www.staff.science.uu.nl/~gent0113/islam/ummalqura.htm
-//            (Kuwaiti algorithm formulas)
 (:glance, :background)
 module HijriDate {
 
     // Julian Day Number of 1 Muharram 1 AH = 16 July 622 CE (Julian).
     const EPOCH_JDN = 1948440;
 
+    // ---- Umm al-Qura table ----
+    const UQ_FIRST_YEAR = 1440;
+    const UQ_FIRST_JDN  = 2458373;   // 1 Muharram 1440 = 11 Sep 2018
+    const UQ_MASKS = [
+        698, 1461, 1450, 3413, 2714, 2350, 622, 1373, 2778, 1748, 1701,
+        1355, 2711, 1358, 2734, 1452, 2985, 3474, 2853, 1611, 3243, 1370,
+        2901, 1746, 3749, 3658, 2709, 1325, 2733, 876, 1881
+    ];
+
     // Returns { :year, :month (1..12), :day (1..30) } for the Gregorian
     // (year, month, day). Treats the date as civil-noon for JDN purposes
     // — the calendar boundary doesn't shift within a single day.
     function fromGregorian(year, month, day) {
-        var jdNoon = _gregorianJdn(year, month, day);
-        return fromJdn(jdNoon);
+        return fromJdn(_gregorianJdn(year, month, day));
     }
 
     // Same conversion starting from a Julian Day Number directly.
     function fromJdn(jdn) {
+        var uq = _fromJdnUmmAlQura(jdn);
+        if (uq != null) { return uq; }
+        return _fromJdnTabular(jdn);
+    }
+
+    // True when `jdn` falls inside the Umm al-Qura table.
+    function isUmmAlQuraRange(jdn) {
+        return _fromJdnUmmAlQura(jdn) != null;
+    }
+
+    // ---- Umm al-Qura lookup ----
+
+    function _uqMonthLength(mask, month) {
+        return ((mask >> (month - 1)) & 1) == 1 ? 30 : 29;
+    }
+
+    function _uqYearLength(mask) {
+        var days = 0;
+        for (var m = 1; m <= 12; m++) { days += _uqMonthLength(mask, m); }
+        return days;
+    }
+
+    function _fromJdnUmmAlQura(jdn) {
+        if (jdn < UQ_FIRST_JDN) { return null; }
+        var rem = jdn - UQ_FIRST_JDN;
+        for (var i = 0; i < UQ_MASKS.size(); i++) {
+            var mask = UQ_MASKS[i];
+            var yLen = _uqYearLength(mask);
+            if (rem < yLen) {
+                var month = 1;
+                while (month < 12) {
+                    var mLen = _uqMonthLength(mask, month);
+                    if (rem < mLen) { break; }
+                    rem -= mLen;
+                    month += 1;
+                }
+                return { :year => UQ_FIRST_YEAR + i, :month => month, :day => rem + 1 };
+            }
+            rem -= yLen;
+        }
+        return null;   // past the end of the table
+    }
+
+    // ---- Kuwaiti tabular fallback ----
+
+    function _fromJdnTabular(jdn) {
         var n = jdn - EPOCH_JDN;            // days since epoch
         var hYear = ((30 * n + 10646) / 10631).toLong().toNumber();
         var yearStart = _yearStartJdn(hYear);
@@ -44,8 +96,6 @@ module HijriDate {
             doy -= monthDayCount;
             month += 1;
             if (month > 12) {
-                // Should not happen if year boundary calc is right; guard
-                // against accumulated rounding.
                 month = 12;
                 break;
             }
@@ -68,16 +118,12 @@ module HijriDate {
         return (month % 2 == 1) ? 30 : 29;
     }
 
-    // JDN of 1 Muharram of `hYear`.
+    // JDN of 1 Muharram of `hYear` (tabular).
     function _yearStartJdn(hYear) {
-        // Total days in years 1..hYear-1 + epoch.
-        // Each 30-year cycle holds 11 * 355 + 19 * 354 = 10631 days.
-        // Offset within cycle = sum of leap-year occurrences below hYear.
         var prev = hYear - 1;
         var fullCycles = (prev / 30).toLong().toNumber();
         var rem = prev - fullCycles * 30;
         var leapsInRem = 0;
-        // The 11 leap positions in a 30-year cycle:
         var leapSlots = [2, 5, 7, 10, 13, 16, 18, 21, 24, 26, 29];
         for (var i = 0; i < leapSlots.size(); i++) {
             if (leapSlots[i] <= rem) { leapsInRem += 1; }

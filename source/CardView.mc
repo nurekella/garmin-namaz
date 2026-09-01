@@ -24,7 +24,8 @@ class CardView extends WatchUi.View {
     var _timer;
     var _times;
     var _today_day;
-    var _idx;          // currently displayed prayer index (0..5)
+    var _idx;          // currently displayed card index into ORDER
+    var _week;         // cached 7-day [fajr, maghrib] rows, rebuilt with _refresh
 
     function initialize(calc, location) {
         View.initialize();
@@ -58,6 +59,23 @@ class CardView extends WatchUi.View {
         _times = _calc.calculate(loc[:lat], loc[:lon],
             info.year, info.month, info.day, loc[:tz]);
         _today_day = info.day;
+        _week = null;   // lazily rebuilt by _drawWeek
+    }
+
+    // 7 upcoming days as [dayOfWeek, fajr, maghrib]; computed once per
+    // refresh rather than on every 1-second frame.
+    function _weekRows(loc) {
+        if (_week != null) { return _week; }
+        var rows = [];
+        for (var i = 0; i < 7; i++) {
+            var moment = Time.now().add(new Time.Duration(i * 86400));
+            var di = Gregorian.info(moment, Time.FORMAT_SHORT);
+            var times = _calc.calculate(loc[:lat], loc[:lon],
+                di.year, di.month, di.day, loc[:tz]);
+            rows.add([di.day_of_week, times[:fajr], times[:maghrib]]);
+        }
+        _week = rows;
+        return rows;
     }
 
     function refresh() as Void {
@@ -213,23 +231,21 @@ class CardView extends WatchUi.View {
 
         var rowY = 110;
         var rowH = 36;
-        for (var i = 0; i < 7; i++) {
-            var moment = Time.now().add(new Time.Duration(i * 86400));
-            var di = Gregorian.info(moment, Time.FORMAT_SHORT);
-            var times = _calc.calculate(loc[:lat], loc[:lon],
-                di.year, di.month, di.day, loc[:tz]);
+        var rows = _weekRows(loc);
+        for (var i = 0; i < rows.size(); i++) {
+            var row = rows[i];
             var y = rowY + i * rowH;
             var color = (i == 0) ? Theme.accent() : Theme.COLOR_TEXT;
 
             dc.setColor(color, Graphics.COLOR_TRANSPARENT);
             dc.drawText(Theme.CENTER_X - 100, y,
-                        Fonts.tiny(), _dayLabel(di.day_of_week, i),
+                        Fonts.tiny(), _dayLabel(row[0], i),
                         Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
             dc.drawText(Theme.CENTER_X, y,
-                        Fonts.tiny(), TimeFormatter.hhmm(times[:fajr]),
+                        Fonts.tiny(), TimeFormatter.hhmm(row[1]),
                         Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
             dc.drawText(Theme.CENTER_X + 100, y,
-                        Fonts.tiny(), TimeFormatter.hhmm(times[:maghrib]),
+                        Fonts.tiny(), TimeFormatter.hhmm(row[2]),
                         Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
         }
     }
@@ -436,27 +452,6 @@ class CardView extends WatchUi.View {
             return "GPS";
         }
         return "";
-    }
-
-    function _normalizePrayerName(raw) {
-        // Strip leading colon from ":fajr"-style symbols.
-        if (raw.find(":") == 0) {
-            return raw.substring(1, raw.length());
-        }
-        // Map "symbol (NNN)" hash-form back to known names by comparing
-        // the toString of each known symbol once. Cheap.
-        var known = [:fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha];
-        for (var i = 0; i < known.size(); i++) {
-            if (known[i].toString().equals(raw)) {
-                if (known[i] == :fajr)    { return "Fajr"; }
-                if (known[i] == :sunrise) { return "Sunrise"; }
-                if (known[i] == :dhuhr)   { return "Dhuhr"; }
-                if (known[i] == :asr)     { return "Asr"; }
-                if (known[i] == :maghrib) { return "Maghrib"; }
-                if (known[i] == :isha)    { return "Isha"; }
-            }
-        }
-        return raw;
     }
 
     function _drawPagerDots(dc as Graphics.Dc) as Void {

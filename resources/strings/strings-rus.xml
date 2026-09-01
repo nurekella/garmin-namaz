@@ -55,4 +55,46 @@
     <string id="HijriMonth10">Шавваль</string>
     <string id="HijriMonth11">Зуль-Када</string>
     <string id="HijriMonth12">Зуль-Хиджа</string>
+
+    <!-- Settings menu (1.7.0) -->
+    <string id="SettingPrealertFajr">Предупреждение: Фаджр</string>
+    <string id="SettingPrealertOther">Предупреждение: остальные</string>
+    <string id="SettingMethod">Метод</string>
+    <string id="SettingNotify">Уведомления</string>
+    <string id="SettingVibe">Вибрация</string>
+    <string id="SettingTheme">Тема</string>
+    <string id="SettingQibla">Кибла</string>
+    <string id="SettingTestVibe">Тест вибрации</string>
+    <string id="SettingVersion">Версия</string>
+    <string id="SettingLanguage">Язык</string>
+    <string id="SettingOffsets">Поправки</string>
+    <string id="On">Вкл</string>
+    <string id="VibeStandard">Стандарт (3)</string>
+    <string id="VibeShort">Короткая (1)</string>
+    <string id="VibeLong">Длинная (5)</string>
+    <string id="VibeDouble">Двойная</string>
+    <string id="ThemeBronze">Бронза</string>
+    <string id="ThemeMint">Мята</string>
+    <string id="ThemeSky">Небо</string>
+    <string id="ThemeMono">Моно</string>
+    <string id="LangAuto">Авто</string>
+    <string id="LangKazakh">Казахский</string>
+    <string id="LangRussian">Русский</string>
+    <string id="LangEnglish">Английский</string>
+    <string id="CityAlmaty">Алматы</string>
+    <string id="CityAstana">Астана</string>
+    <string id="CityShymkent">Шымкент</string>
+    <string id="CityKaraganda">Караганда</string>
+    <string id="CityAktobe">Актобе</string>
+    <string id="CityTaraz">Тараз</string>
+    <string id="CityPavlodar">Павлодар</string>
+    <string id="CityOskemen">Усть-Каменогорск</string>
+    <string id="CitySemey">Семей</string>
+    <string id="CityAtyrau">Атырау</string>
+    <string id="CityKostanay">Костанай</string>
+    <string id="CityKyzylorda">Кызылорда</string>
+    <string id="CityUralsk">Уральск</string>
+    <string id="CityPetropavl">Петропавловск</string>
+    <string id="CityAktau">Актау</string>
+    <string id="CityTurkestan">Туркестан</string>
 </strings>

@@ -15,7 +15,7 @@ module Settings {
     // Hardcoded mirror of manifest.xml version="..." — Connect IQ doesn't
     // expose manifest values at runtime, so the on-watch settings menu
     // shows this constant. Bump in lockstep with the manifest.
-    const VERSION = "1.6.0";
+    const VERSION = "1.7.0";
 
     // "kk" / "ru" / "en" — falls back to the system Rez locale when user
     // chose "auto" or never opened settings.
@@ -49,22 +49,16 @@ module Settings {
         return Cities.all()[idx][:id];
     }
 
-    function prealertMinutes() {
-        var v = Application.Properties.getValue("prealertMin");
-        if (v == null) { return 0; }
-        return v.toNumber();
-    }
-
+    // Pre-alert minutes before Fajr / before the other four prayers.
+    // (The old single "prealertMin" property was retired in 1.7.0: the
+    // per-prayer properties default to 0 in settings.xml, so a fallback
+    // to it could never trigger.)
     function prealertFajrMinutes() {
-        var v = Application.Properties.getValue("prealertFajr");
-        if (v == null) { return prealertMinutes(); }   // legacy fallback
-        return v.toNumber();
+        return _intProp("prealertFajr");
     }
 
     function prealertOtherMinutes() {
-        var v = Application.Properties.getValue("prealertOther");
-        if (v == null) { return prealertMinutes(); }
-        return v.toNumber();
+        return _intProp("prealertOther");
     }
 
     function vibePatternIdx() {

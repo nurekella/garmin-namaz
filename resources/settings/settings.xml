@@ -12,7 +12,6 @@
         <property id="offsetAsr"     type="number">0</property>
         <property id="offsetMaghrib" type="number">0</property>
         <property id="offsetIsha"    type="number">0</property>
-        <property id="prealertMin"   type="number">0</property>
         <!-- Language override: 0=auto, 1=kk, 2=ru, 3=en. -->
         <property id="langIdx"       type="number">0</property>
         <!-- Calculation method: index into Methods.IDS. 0 = ҚМДБ (default). -->
@@ -21,7 +20,7 @@
         <property id="notify"        type="boolean">true</property>
         <!-- Vibration pattern: 0=Standard (3 pulses), 1=Short (1), 2=Long (5), 3=Double. -->
         <property id="vibePattern"   type="number">0</property>
-        <!-- Pre-alert minutes for Fajr (was prealertMin, now per-prayer). -->
+        <!-- Pre-alert minutes for Fajr. -->
         <property id="prealertFajr"  type="number">0</property>
         <!-- Pre-alert minutes for Dhuhr/Asr/Maghrib/Isha. -->
         <property id="prealertOther" type="number">0</property>
@@ -40,32 +39,30 @@
         <setting propertyKey="@Properties.manualCityIdx" title="@Strings.SettingCity">
             <settingConfig type="list">
                 <listEntry value="-1">@Strings.CityAuto</listEntry>
-                <listEntry value="0">Almaty</listEntry>
-                <listEntry value="1">Astana</listEntry>
-                <listEntry value="2">Shymkent</listEntry>
-                <listEntry value="3">Karaganda</listEntry>
-                <listEntry value="4">Aktobe</listEntry>
-                <listEntry value="5">Taraz</listEntry>
-                <listEntry value="6">Pavlodar</listEntry>
-                <listEntry value="7">Oskemen</listEntry>
-                <listEntry value="8">Semey</listEntry>
-                <listEntry value="9">Atyrau</listEntry>
-                <listEntry value="10">Kostanay</listEntry>
-                <listEntry value="11">Kyzylorda</listEntry>
-                <listEntry value="12">Uralsk</listEntry>
-                <listEntry value="13">Petropavl</listEntry>
-                <listEntry value="14">Aktau</listEntry>
-                <listEntry value="15">Turkestan</listEntry>
+                <listEntry value="0">@Strings.CityAlmaty</listEntry>
+                <listEntry value="1">@Strings.CityAstana</listEntry>
+                <listEntry value="2">@Strings.CityShymkent</listEntry>
+                <listEntry value="3">@Strings.CityKaraganda</listEntry>
+                <listEntry value="4">@Strings.CityAktobe</listEntry>
+                <listEntry value="5">@Strings.CityTaraz</listEntry>
+                <listEntry value="6">@Strings.CityPavlodar</listEntry>
+                <listEntry value="7">@Strings.CityOskemen</listEntry>
+                <listEntry value="8">@Strings.CitySemey</listEntry>
+                <listEntry value="9">@Strings.CityAtyrau</listEntry>
+                <listEntry value="10">@Strings.CityKostanay</listEntry>
+                <listEntry value="11">@Strings.CityKyzylorda</listEntry>
+                <listEntry value="12">@Strings.CityUralsk</listEntry>
+                <listEntry value="13">@Strings.CityPetropavl</listEntry>
+                <listEntry value="14">@Strings.CityAktau</listEntry>
+                <listEntry value="15">@Strings.CityTurkestan</listEntry>
             </settingConfig>
         </setting>
 
-        <setting propertyKey="@Properties.prealertMin" title="@Strings.SettingPreAlert">
-            <settingConfig type="list">
-                <listEntry value="0">@Strings.Off</listEntry>
-                <listEntry value="5">5 @Strings.MinutesShort</listEntry>
-                <listEntry value="10">10 @Strings.MinutesShort</listEntry>
-                <listEntry value="15">15 @Strings.MinutesShort</listEntry>
-            </settingConfig>
+        <setting propertyKey="@Properties.prealertFajr" title="@Strings.SettingPrealertFajr">
+            <settingConfig type="numeric" min="0" max="30"/>
+        </setting>
+        <setting propertyKey="@Properties.prealertOther" title="@Strings.SettingPrealertOther">
+            <settingConfig type="numeric" min="0" max="30"/>
         </setting>
 
         <setting propertyKey="@Properties.offsetFajr" title="@Strings.OffsetFajr">
@@ -86,16 +83,16 @@
         <setting propertyKey="@Properties.offsetIsha" title="@Strings.OffsetIsha">
             <settingConfig type="numeric" min="-9" max="9"/>
         </setting>
-        <setting propertyKey="@Properties.langIdx" title="Language">
+        <setting propertyKey="@Properties.langIdx" title="@Strings.SettingLanguage">
             <settingConfig type="list">
-                <listEntry value="0">Auto</listEntry>
-                <listEntry value="1">Kazakh</listEntry>
-                <listEntry value="2">Russian</listEntry>
-                <listEntry value="3">English</listEntry>
+                <listEntry value="0">@Strings.LangAuto</listEntry>
+                <listEntry value="1">@Strings.LangKazakh</listEntry>
+                <listEntry value="2">@Strings.LangRussian</listEntry>
+                <listEntry value="3">@Strings.LangEnglish</listEntry>
             </settingConfig>
         </setting>
 
-        <setting propertyKey="@Properties.methodIdx" title="Method">
+        <setting propertyKey="@Properties.methodIdx" title="@Strings.SettingMethod">
             <settingConfig type="list">
                 <listEntry value="0">QMDB (KZ)</listEntry>
                 <listEntry value="1">Muslim World League</listEntry>
@@ -110,34 +107,28 @@
             </settingConfig>
         </setting>
 
-        <setting propertyKey="@Properties.notify" title="Notifications">
+        <setting propertyKey="@Properties.notify" title="@Strings.SettingNotify">
             <settingConfig type="boolean"/>
         </setting>
 
-        <setting propertyKey="@Properties.vibePattern" title="Vibration pattern">
+        <setting propertyKey="@Properties.vibePattern" title="@Strings.SettingVibe">
             <settingConfig type="list">
-                <listEntry value="0">Standard (3)</listEntry>
-                <listEntry value="1">Short (1)</listEntry>
-                <listEntry value="2">Long (5)</listEntry>
-                <listEntry value="3">Double</listEntry>
+                <listEntry value="0">@Strings.VibeStandard</listEntry>
+                <listEntry value="1">@Strings.VibeShort</listEntry>
+                <listEntry value="2">@Strings.VibeLong</listEntry>
+                <listEntry value="3">@Strings.VibeDouble</listEntry>
             </settingConfig>
         </setting>
 
-        <setting propertyKey="@Properties.themeIdx" title="Theme">
+        <setting propertyKey="@Properties.themeIdx" title="@Strings.SettingTheme">
             <settingConfig type="list">
-                <listEntry value="0">Bronze</listEntry>
-                <listEntry value="1">Mint</listEntry>
-                <listEntry value="2">Sky</listEntry>
-                <listEntry value="3">Mono</listEntry>
+                <listEntry value="0">@Strings.ThemeBronze</listEntry>
+                <listEntry value="1">@Strings.ThemeMint</listEntry>
+                <listEntry value="2">@Strings.ThemeSky</listEntry>
+                <listEntry value="3">@Strings.ThemeMono</listEntry>
             </settingConfig>
         </setting>
 
-        <setting propertyKey="@Properties.prealertFajr" title="Pre-alert Fajr (min)">
-            <settingConfig type="numeric" min="0" max="30"/>
-        </setting>
-        <setting propertyKey="@Properties.prealertOther" title="Pre-alert other prayers (min)">
-            <settingConfig type="numeric" min="0" max="30"/>
-        </setting>
     </settings>
 
 </resources>

@@ -4,11 +4,9 @@ using Toybox.Attention;
 using Toybox.Lang;
 
 // On-watch settings menu. Entered via the watch's Menu button (long-press UP).
-// Surface (top-level Menu2):
-//   Аср        — toggles Hanafi <-> Standard
-//   Қала       — opens city picker (Auto + 16 cities)
-//   Алдын-ала  — cycles Off / 5 / 10 / 15 minutes
-//   Offset     — opens per-prayer offset submenu (each cycles -9..+9)
+// Every label comes from Rez.Strings so the menu follows the KK/RU/EN
+// locale like the rest of the UI. Pre-alert is split into Fajr and
+// "other prayers" (same two properties Garmin Connect Mobile edits).
 //
 // Settings are written to Application.Properties; the app re-applies via
 // onSettingsChanged().
@@ -25,36 +23,50 @@ class SettingsMenu extends WatchUi.Menu2 {
             WatchUi.loadResource(Rez.Strings.SettingCity),
             _citySubLabel(), :city, null));
         addItem(new WatchUi.MenuItem(
-            WatchUi.loadResource(Rez.Strings.SettingPreAlert),
-            _prealertSubLabel(), :prealert, null));
+            WatchUi.loadResource(Rez.Strings.SettingPrealertFajr),
+            _prealertSubLabel(Settings.prealertFajrMinutes()), :prealertFajr, null));
         addItem(new WatchUi.MenuItem(
-            "Method", _methodSubLabel(), :method, null));
+            WatchUi.loadResource(Rez.Strings.SettingPrealertOther),
+            _prealertSubLabel(Settings.prealertOtherMinutes()), :prealertOther, null));
         addItem(new WatchUi.MenuItem(
-            "Notifications", _notifySubLabel(), :notify, null));
+            WatchUi.loadResource(Rez.Strings.SettingMethod), _methodSubLabel(), :method, null));
         addItem(new WatchUi.MenuItem(
-            "Vibe pattern", _vibeSubLabel(), :vibe, null));
+            WatchUi.loadResource(Rez.Strings.SettingNotify), _notifySubLabel(), :notify, null));
         addItem(new WatchUi.MenuItem(
-            "Theme", _themeSubLabel(), :theme, null));
+            WatchUi.loadResource(Rez.Strings.SettingVibe), _vibeSubLabel(), :vibe, null));
         addItem(new WatchUi.MenuItem(
-            "Qibla", null, :qibla, null));
+            WatchUi.loadResource(Rez.Strings.SettingTheme), _themeSubLabel(), :theme, null));
         addItem(new WatchUi.MenuItem(
-            "Test vibration", null, :testVibe, null));
+            WatchUi.loadResource(Rez.Strings.SettingQibla), null, :qibla, null));
         addItem(new WatchUi.MenuItem(
-            "Version", Settings.VERSION, :version, null));
+            WatchUi.loadResource(Rez.Strings.SettingTestVibe), null, :testVibe, null));
         addItem(new WatchUi.MenuItem(
-            "Language", _langSubLabel(), :lang, null));
+            WatchUi.loadResource(Rez.Strings.SettingVersion), Settings.VERSION, :version, null));
         addItem(new WatchUi.MenuItem(
-            "Offset", "", :offsets, null));
+            WatchUi.loadResource(Rez.Strings.SettingLanguage), _langSubLabel(), :lang, null));
+        addItem(new WatchUi.MenuItem(
+            WatchUi.loadResource(Rez.Strings.SettingOffsets), "", :offsets, null));
     }
 
+    // Sub-labels are looked up by item id, not position, so reordering
+    // the menu can't silently mislabel an entry.
     function refreshSubLabels() as Void {
-        var i;
-        i = getItem(0); if (i != null) { i.setSubLabel(_asrSubLabel()); }
-        i = getItem(1); if (i != null) { i.setSubLabel(_citySubLabel()); }
-        i = getItem(2); if (i != null) { i.setSubLabel(_prealertSubLabel()); }
-        i = getItem(3); if (i != null) { i.setSubLabel(_methodSubLabel()); }
-        i = getItem(4); if (i != null) { i.setSubLabel(_notifySubLabel()); }
-        i = getItem(5); if (i != null) { i.setSubLabel(_langSubLabel()); }
+        _setSub(:asr,           _asrSubLabel());
+        _setSub(:city,          _citySubLabel());
+        _setSub(:prealertFajr,  _prealertSubLabel(Settings.prealertFajrMinutes()));
+        _setSub(:prealertOther, _prealertSubLabel(Settings.prealertOtherMinutes()));
+        _setSub(:method,        _methodSubLabel());
+        _setSub(:notify,        _notifySubLabel());
+        _setSub(:vibe,          _vibeSubLabel());
+        _setSub(:theme,         _themeSubLabel());
+        _setSub(:lang,          _langSubLabel());
+    }
+
+    function _setSub(id, label) as Void {
+        var idx = findItemById(id);
+        if (idx < 0) { return; }
+        var item = getItem(idx);
+        if (item != null) { item.setSubLabel(label); }
     }
 
     function _methodSubLabel() as Lang.String {
@@ -65,32 +77,21 @@ class SettingsMenu extends WatchUi.Menu2 {
     }
 
     function _notifySubLabel() as Lang.String {
-        return Settings.notificationsEnabled() ? "On" : "Off";
+        return WatchUi.loadResource(Settings.notificationsEnabled() ? Rez.Strings.On : Rez.Strings.Off);
     }
 
     function _vibeSubLabel() as Lang.String {
-        var idx = Settings.vibePatternIdx();
-        if (idx == 1) { return "Short"; }
-        if (idx == 2) { return "Long"; }
-        if (idx == 3) { return "Double"; }
-        return "Standard";
+        return WatchUi.loadResource(VibePickerMenu.labelFor(Settings.vibePatternIdx()));
     }
 
     function _themeSubLabel() as Lang.String {
-        var idx = Settings.themeIdx();
-        if (idx == 1) { return "Mint"; }
-        if (idx == 2) { return "Sky"; }
-        if (idx == 3) { return "Mono"; }
-        return "Bronze";
+        return WatchUi.loadResource(ThemePickerMenu.labelFor(Settings.themeIdx()));
     }
 
     function _langSubLabel() as Lang.String {
         var v = Application.Properties.getValue("langIdx");
         var idx = (v == null) ? 0 : v.toNumber();
-        if (idx == 1) { return "Kazakh"; }
-        if (idx == 2) { return "Russian"; }
-        if (idx == 3) { return "English"; }
-        return "Auto";
+        return WatchUi.loadResource(LangPickerMenu.labelFor(idx));
     }
 
     function _asrSubLabel() as Lang.String {
@@ -107,8 +108,7 @@ class SettingsMenu extends WatchUi.Menu2 {
         return Cities.localizedName(Cities.all()[idx], lang);
     }
 
-    function _prealertSubLabel() as Lang.String {
-        var m = Settings.prealertMinutes();
+    function _prealertSubLabel(m) as Lang.String {
         if (m <= 0) { return WatchUi.loadResource(Rez.Strings.Off); }
         return m + " " + WatchUi.loadResource(Rez.Strings.MinutesShort);
     }
@@ -137,15 +137,13 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :city) {
             var menu = new CityPickerMenu();
             WatchUi.pushView(menu, new CityPickerDelegate(_menu), WatchUi.SLIDE_LEFT);
-        } else if (id == :prealert) {
-            // cycle 0 -> 5 -> 10 -> 15 -> 0
-            var cur = Settings.prealertMinutes();
-            var next = 0;
-            if (cur == 0)      { next = 5; }
-            else if (cur == 5) { next = 10; }
-            else if (cur == 10) { next = 15; }
-            else                { next = 0; }
-            Application.Properties.setValue("prealertMin", next);
+        } else if (id == :prealertFajr) {
+            Application.Properties.setValue("prealertFajr",
+                _nextPrealert(Settings.prealertFajrMinutes()));
+            _applyAndRefresh();
+        } else if (id == :prealertOther) {
+            Application.Properties.setValue("prealertOther",
+                _nextPrealert(Settings.prealertOtherMinutes()));
             _applyAndRefresh();
         } else if (id == :method) {
             var menu = new MethodPickerMenu();
@@ -181,6 +179,14 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
 
     function onBack() as Void {
         WatchUi.popView(WatchUi.SLIDE_RIGHT);
+    }
+
+    // cycle 0 -> 5 -> 10 -> 15 -> 0
+    function _nextPrealert(cur) as Lang.Number {
+        if (cur <= 0)  { return 5; }
+        if (cur == 5)  { return 10; }
+        if (cur == 10) { return 15; }
+        return 0;
     }
 
     function _applyAndRefresh() as Void {
@@ -263,7 +269,7 @@ class OffsetsMenu extends WatchUi.Menu2 {
     ];
 
     function initialize() {
-        Menu2.initialize({ :title => "Offset" });
+        Menu2.initialize({ :title => WatchUi.loadResource(Rez.Strings.SettingOffsets) });
         for (var i = 0; i < PRAYERS.size(); i++) {
             addItem(new WatchUi.MenuItem(
                 WatchUi.loadResource(PRAYERS[i][2]),
@@ -367,16 +373,21 @@ class AsrPickerDelegate extends WatchUi.Menu2InputDelegate {
 // ---- Language picker -------------------------------------------------
 
 class LangPickerMenu extends WatchUi.Menu2 {
+    static function labelFor(idx) {
+        if (idx == 1) { return Rez.Strings.LangKazakh; }
+        if (idx == 2) { return Rez.Strings.LangRussian; }
+        if (idx == 3) { return Rez.Strings.LangEnglish; }
+        return Rez.Strings.LangAuto;
+    }
     function initialize() {
-        Menu2.initialize({ :title => "Language" });
+        Menu2.initialize({ :title => WatchUi.loadResource(Rez.Strings.SettingLanguage) });
         var v = Application.Properties.getValue("langIdx");
         var cur = (v == null) ? 0 : v.toNumber();
-        var entries = [[0, "Auto"], [1, "Kazakh"], [2, "Russian"], [3, "English"]];
-        for (var i = 0; i < entries.size(); i++) {
+        for (var i = 0; i < 4; i++) {
             addItem(new WatchUi.MenuItem(
-                entries[i][1],
-                (cur == entries[i][0]) ? "*" : null,
-                entries[i][0], null));
+                WatchUi.loadResource(labelFor(i)),
+                (cur == i) ? "*" : null,
+                i, null));
         }
     }
 }
@@ -400,7 +411,7 @@ class LangPickerDelegate extends WatchUi.Menu2InputDelegate {
 
 class MethodPickerMenu extends WatchUi.Menu2 {
     function initialize() {
-        Menu2.initialize({ :title => "Method" });
+        Menu2.initialize({ :title => WatchUi.loadResource(Rez.Strings.SettingMethod) });
         var v = Application.Properties.getValue("methodIdx");
         var cur = (v == null) ? 0 : v.toNumber();
         for (var i = 0; i < Methods.LABELS.size(); i++) {
@@ -415,14 +426,19 @@ class MethodPickerMenu extends WatchUi.Menu2 {
 // ---- Vibration / Theme pickers ---------------------------------------
 
 class VibePickerMenu extends WatchUi.Menu2 {
-    static const ENTRIES = [[0, "Standard"], [1, "Short"], [2, "Long"], [3, "Double"]];
+    static function labelFor(idx) {
+        if (idx == 1) { return Rez.Strings.VibeShort; }
+        if (idx == 2) { return Rez.Strings.VibeLong; }
+        if (idx == 3) { return Rez.Strings.VibeDouble; }
+        return Rez.Strings.VibeStandard;
+    }
     function initialize() {
-        Menu2.initialize({ :title => "Vibe pattern" });
+        Menu2.initialize({ :title => WatchUi.loadResource(Rez.Strings.SettingVibe) });
         var cur = Settings.vibePatternIdx();
-        for (var i = 0; i < ENTRIES.size(); i++) {
+        for (var i = 0; i < 4; i++) {
             addItem(new WatchUi.MenuItem(
-                ENTRIES[i][1], (cur == ENTRIES[i][0]) ? "*" : null,
-                ENTRIES[i][0], null));
+                WatchUi.loadResource(labelFor(i)), (cur == i) ? "*" : null,
+                i, null));
         }
     }
 }
@@ -447,14 +463,19 @@ class VibePickerDelegate extends WatchUi.Menu2InputDelegate {
 }
 
 class ThemePickerMenu extends WatchUi.Menu2 {
-    static const ENTRIES = [[0, "Bronze"], [1, "Mint"], [2, "Sky"], [3, "Mono"]];
+    static function labelFor(idx) {
+        if (idx == 1) { return Rez.Strings.ThemeMint; }
+        if (idx == 2) { return Rez.Strings.ThemeSky; }
+        if (idx == 3) { return Rez.Strings.ThemeMono; }
+        return Rez.Strings.ThemeBronze;
+    }
     function initialize() {
-        Menu2.initialize({ :title => "Theme" });
+        Menu2.initialize({ :title => WatchUi.loadResource(Rez.Strings.SettingTheme) });
         var cur = Settings.themeIdx();
-        for (var i = 0; i < ENTRIES.size(); i++) {
+        for (var i = 0; i < 4; i++) {
             addItem(new WatchUi.MenuItem(
-                ENTRIES[i][1], (cur == ENTRIES[i][0]) ? "*" : null,
-                ENTRIES[i][0], null));
+                WatchUi.loadResource(labelFor(i)), (cur == i) ? "*" : null,
+                i, null));
         }
     }
 }
