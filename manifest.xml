@@ -2,7 +2,7 @@
 <iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
     <iq:application
         entry="NamazApp"
-        id="48ca57b17852455dbb74f877a906feef"
+        id="9ff22a2c32aa48d385b280ede596d4fd"
         launcherIcon="@Drawables.LauncherIcon"
         minApiLevel="4.2.0"
         name="@Strings.AppName"
