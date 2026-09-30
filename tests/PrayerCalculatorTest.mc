@@ -299,6 +299,27 @@ module PrayerCalculatorTest {
     // ---------- getNextPrayer ----------
 
     (:test)
+    function testNextAfter_RollsToTomorrowFajr(logger) {
+        var calc = _newDumkHanafi();
+        var loc = { :lat => 43.2389d, :lon => 76.8897d, :tz => new LocationProvider().deviceTz() };
+
+        // 23:50 local: past Isha -> tomorrow's Fajr, a few hours away.
+        var late = calc.nextAfter(loc, Toybox.Time.today().add(new Toybox.Time.Duration(23 * 3600 + 50 * 60)));
+        if (late == null || late[:name] != :fajr
+                || late[:secondsUntil] < 3 * 3600 || late[:secondsUntil] > 8 * 3600) {
+            logger.error("23:50 should roll to tomorrow's fajr, got " + late);
+            return false;
+        }
+        // 12:00 local: something later today, well under 12 h away.
+        var noon = calc.nextAfter(loc, Toybox.Time.today().add(new Toybox.Time.Duration(12 * 3600)));
+        if (noon == null || noon[:name] == :fajr || noon[:secondsUntil] > 12 * 3600) {
+            logger.error("noon should find a prayer later today, got " + noon);
+            return false;
+        }
+        return true;
+    }
+
+    (:test)
     function testGetNextPrayer_Sequence(logger) {
         var calc = _newDumkHanafi();
         var t = calc.calculate(43.2389d, 76.8897d, 2026, 4, 29, 5);

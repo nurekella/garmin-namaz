@@ -66,6 +66,15 @@ module TimeFormatterTest {
         return true;
     }
 
+    (:test)
+    function testHm_RoundsMinutesUp(logger) {
+        Test.assertEqual(TimeFormatter.hm(3725), "1:03");   // 1:02:05 -> 1:03
+        Test.assertEqual(TimeFormatter.hm(30), "0:01");
+        Test.assertEqual(TimeFormatter.hm(3600), "1:00");
+        Test.assertEqual(TimeFormatter.hm(-5), "--:--");
+        return true;
+    }
+
 }
 
 module PrayerNamesTest {

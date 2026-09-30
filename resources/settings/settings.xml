@@ -18,8 +18,6 @@
         <property id="methodIdx"     type="number">0</property>
         <!-- Vibrate at prayer times. -->
         <property id="notify"        type="boolean">true</property>
-        <!-- Vibration pattern: 0=Standard (3 pulses), 1=Short (1), 2=Long (5), 3=Double. -->
-        <property id="vibePattern"   type="number">0</property>
         <!-- Pre-alert minutes for Fajr. The watch menu sets both pre-alerts at once. -->
         <property id="prealertFajr"  type="number">0</property>
         <!-- Pre-alert minutes for Dhuhr/Asr/Maghrib/Isha. -->
@@ -103,15 +101,6 @@
 
         <setting propertyKey="@Properties.notify" title="Notifications">
             <settingConfig type="boolean"/>
-        </setting>
-
-        <setting propertyKey="@Properties.vibePattern" title="Vibration pattern">
-            <settingConfig type="list">
-                <listEntry value="0">Standard (3)</listEntry>
-                <listEntry value="1">Short (1)</listEntry>
-                <listEntry value="2">Long (5)</listEntry>
-                <listEntry value="3">Double</listEntry>
-            </settingConfig>
         </setting>
 
         <setting propertyKey="@Properties.themeIdx" title="Theme">

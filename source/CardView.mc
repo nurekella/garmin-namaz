@@ -8,25 +8,21 @@ using Toybox.Lang;
 using Toybox.Position;
 using Toybox.System;
 
-// Card-deck layout. One prayer per card, full-screen. Swipe / DOWN-UP
-// to flip through. Auto-opens at the next prayer.
-//
-// Card composition (top to bottom):
-//   y=58   name          Fonts.medium  accent
-//   y=170  big time      FONT_NUMBER_THAI_HOT  white
-//   y=270  status row    Fonts.small   ("через 1:23:45" / "был 2 ч назад")
-//   y=340  hijri         Fonts.xtiny   muted
-//   y=380  position dots — current card filled
+// Three cards, flipped with UP/DOWN or swipe:
+//   overview  — dates, city, 5 prayers + sunrise, time left to the next one
+//   countdown — next prayer with a live H:MM:SS countdown
+//   week      — Fajr / Maghrib for the next 7 days (sahoor / iftar)
 class CardView extends WatchUi.View {
 
-    static const ORDER = [:overview, :countdown, :week, :fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha, :tahajjud];
+    static const ORDER = [:overview, :countdown, :week];
+    static const DOTS_Y = 398;
 
     var _calc;
     var _location;
     var _timer;
     var _times;
     var _today_day;
-    var _idx;          // currently displayed prayer index (0..5)
+    var _idx;          // index into ORDER
     var _lastMin;      // minute of the last tick-driven redraw
     var _icons = {};   // sym -> loaded bitmap
 
@@ -38,7 +34,7 @@ class CardView extends WatchUi.View {
 
     function onShow() as Void {
         _refresh();
-        _idx = _initialIdx();
+        _idx = 0;
         if (_timer == null) { _timer = new Timer.Timer(); }
         _timer.start(method(:_tick), 1000, true);
         // Nothing else ever turns GPS on — without this, "auto" users only
@@ -64,12 +60,10 @@ class CardView extends WatchUi.View {
         WatchUi.requestUpdate();
     }
 
-    // Only the countdown / per-prayer cards show seconds; the overview and
-    // week cards redraw once a minute.
+    // Only the countdown card shows seconds; the others redraw once a minute.
     function _tick() as Void {
-        var sym = ORDER[_idx];
         var min = System.getClockTime().min;
-        if ((sym == :overview || sym == :week) && min == _lastMin) { return; }
+        if (ORDER[_idx] != :countdown && min == _lastMin) { return; }
         _lastMin = min;
         WatchUi.requestUpdate();
     }
@@ -91,12 +85,8 @@ class CardView extends WatchUi.View {
 
     function refresh() as Void {
         _refresh();
-        _idx = _initialIdx();
+        _idx = 0;
         WatchUi.requestUpdate();
-    }
-
-    function _initialIdx() {
-        return 0; // always start on overview; user swipes for details
     }
 
     function next() as Void {
@@ -111,15 +101,9 @@ class CardView extends WatchUi.View {
 
     function onUpdate(dc as Graphics.Dc) as Void {
         var info = Gregorian.info(Time.now(), Time.FORMAT_SHORT);
-        if (_times == null || _today_day != info.day) {
-            _refresh();
-            _idx = _initialIdx();
-        }
-        // Re-pull calc + recompute every frame is cheap (< 1 ms);
-        // ensures Asr/method changes show without a manual refresh.
         var app = Application.getApp();
-        if (app != null && app._calculator != _calc) {
-            _calc = app._calculator;
+        if (_times == null || _today_day != info.day
+                || (app != null && app._calculator != _calc)) {
             _refresh();
         }
 
@@ -135,301 +119,143 @@ class CardView extends WatchUi.View {
         }
 
         var sym  = ORDER[_idx];
-        var nowH = info.hour + info.min / 60.0d + info.sec / 3600.0d;
-
+        var next = _calc.nextAfter(_location.getCurrentLocation(), Time.now());
         if (sym == :overview) {
-            _drawOverview(dc, info, nowH);
+            _drawOverview(dc, info, next);
         } else if (sym == :countdown) {
-            _drawCountdown(dc, info, nowH);
-        } else if (sym == :week) {
-            _drawWeek(dc, info);
+            _drawCountdown(dc, info, next);
         } else {
-            _drawPrayer(dc, info, nowH, sym);
+            _drawWeek(dc);
         }
-
         _drawPagerDots(dc);
     }
 
-    function _drawOverview(dc as Graphics.Dc, info, nowH) as Void {
-        // ---- header: Greg date + year, Hijri date + year ----
-        var monthStr = PrayerNames.monthShort(info.month);
-        var dateStr  = info.day + " " + monthStr + " " + info.year;
+    function _drawOverview(dc as Graphics.Dc, info, next) as Void {
+        var center = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
+
+        // ---- header: Gregorian + Hijri dates ----
         dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 44,
-                    Fonts.medium(), dateStr,
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-
-        var hd = HijriDate.fromGregorian(info.year, info.month, info.day);
+        dc.drawText(Theme.CENTER_X, 44, Fonts.medium(), _gregStr(info), center);
         dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 82,
-                    Fonts.small(),
-                    hd[:day] + " " + HijriDate.monthName(hd[:month]) + " " + hd[:year],
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(Theme.CENTER_X, 82, Fonts.small(), _hijriStr(info), center);
 
-        // ---- city name ----
-        var loc = _location.getCurrentLocation();
-        var cityLabel = _resolveCityLabel(loc);
-        dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 116,
-                    Fonts.small(), cityLabel,
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-
-        // ---- Friday Jumu'ah strip: overrides the city line once a week ----
+        // ---- city, or Jumu'ah on Fridays (day_of_week 6) ----
         if (info.day_of_week == 6) {
             dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
-            dc.drawText(Theme.CENTER_X, 116,
-                        Fonts.small(), PrayerNames.jumuah(),
-                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            dc.drawText(Theme.CENTER_X, 116, Fonts.small(), PrayerNames.jumuah(), center);
+        } else {
+            dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(Theme.CENTER_X, 116, Fonts.small(),
+                        _resolveCityLabel(_location.getCurrentLocation()), center);
         }
 
-        // ---- 6 prayers ----
-        var nextEntry = _calc.getNextPrayer(_times, nowH);
-        var nextSym = (nextEntry != null) ? nextEntry[:name] : null;
-        // 6 rows including Sunrise (Tahajjud stays on its own swipe card).
+        // ---- 5 prayers + sunrise ----
+        var nowH = info.hour + info.min / 60.0d + info.sec / 3600.0d;
+        var nextSym = (next != null) ? next[:name] : null;
         var prayers = [:fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha];
-        var rowY = 148;
-        var rowH = 40;
         for (var i = 0; i < prayers.size(); i++) {
             var sym = prayers[i];
             var t   = _times[sym];
-            var color = _colorFor(sym, nextSym, t, nowH);
-            var y = rowY + i * rowH;
+            var y   = 146 + i * 37;
 
             // 28x28 icon flush-left, vertically centred on the row.
             var icon = _iconFor(sym);
-            if (icon != null) {
-                dc.drawBitmap(Theme.CENTER_X - 130,
-                              y - icon.getHeight() / 2,
-                              icon);
-            }
+            dc.drawBitmap(Theme.CENTER_X - 130, y - icon.getHeight() / 2, icon);
 
-            dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(Theme.CENTER_X - 90, y,
-                        Fonts.medium(), PrayerNames.nameOf(sym),
+            dc.setColor(_colorFor(sym, nextSym, t, nowH), Graphics.COLOR_TRANSPARENT);
+            dc.drawText(Theme.CENTER_X - 90, y, Fonts.medium(), PrayerNames.nameOf(sym),
                         Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
-            dc.drawText(Theme.CENTER_X + 120, y,
-                        Fonts.medium(), TimeFormatter.hhmm(t),
+            dc.drawText(Theme.CENTER_X + 120, y, Fonts.medium(), TimeFormatter.hhmm(t),
                         Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
         }
 
-        _drawDayProgress(dc, nowH);
+        // ---- time left to the highlighted row ----
+        if (next != null) {
+            dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
+            dc.drawText(Theme.CENTER_X, 368, Fonts.small(),
+                        PrayerNames.timeLeft(TimeFormatter.hm(next[:secondsUntil])), center);
+        }
+    }
+
+    function _drawCountdown(dc as Graphics.Dc, info, next) as Void {
+        if (next == null) { return; }
+        var center = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
+
+        // Current clock at top centre.
+        dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, 32, Fonts.small(),
+                    _pad2(info.hour) + ":" + _pad2(info.min), center);
+        dc.drawText(Theme.CENTER_X, 70, Fonts.tiny(), PrayerNames.nextLabel(), center);
+
+        dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, 120, Fonts.medium(), PrayerNames.nameOf(next[:name]), center);
+
+        // Hero countdown — biggest number font available.
+        dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, 220, Graphics.FONT_NUMBER_THAI_HOT,
+                    TimeFormatter.countdown(next[:secondsUntil]), center);
+
+        dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, 288, Fonts.small(),
+                    PrayerNames.pick("сағат ", "в ", "at ") + TimeFormatter.hhmm(next[:time]), center);
+
+        dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, 332, Fonts.small(), _gregStr(info), center);
+        dc.drawText(Theme.CENTER_X, 358, Fonts.small(), _hijriStr(info), center);
     }
 
     // 7 days of upcoming Fajr / Maghrib in a compact table — for planning
-    // sahoor / iftar without having to swipe through each day's detail.
-    function _drawWeek(dc as Graphics.Dc, info) as Void {
+    // sahoor / iftar.
+    function _drawWeek(dc as Graphics.Dc) as Void {
         var loc = _location.getCurrentLocation();
-        if (loc == null) { return; }
+        var left   = Graphics.TEXT_JUSTIFY_LEFT   | Graphics.TEXT_JUSTIFY_VCENTER;
+        var center = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
+        var right  = Graphics.TEXT_JUSTIFY_RIGHT  | Graphics.TEXT_JUSTIFY_VCENTER;
 
-        // Header
         dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 50, Fonts.tiny(), "7 DAYS",
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(Theme.CENTER_X, 50, Fonts.tiny(),
+                    PrayerNames.pick("7 КҮН", "7 ДНЕЙ", "7 DAYS"), center);
 
-        // Sub-headers — Day / Fajr / Maghrib
         dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
-        var headerY = 82;
-        dc.drawText(Theme.CENTER_X - 100, headerY, Fonts.xtiny(), "Day",
-                    Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
-        dc.drawText(Theme.CENTER_X, headerY, Fonts.xtiny(),
-                    PrayerNames.nameOf(:fajr),
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-        dc.drawText(Theme.CENTER_X + 100, headerY, Fonts.xtiny(),
-                    PrayerNames.nameOf(:maghrib),
-                    Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(Theme.CENTER_X - 100, 82, Fonts.xtiny(),
+                    PrayerNames.pick("Күн", "День", "Day"), left);
+        dc.drawText(Theme.CENTER_X, 82, Fonts.xtiny(), PrayerNames.nameOf(:fajr), center);
+        dc.drawText(Theme.CENTER_X + 100, 82, Fonts.xtiny(), PrayerNames.nameOf(:maghrib), right);
 
-        var rowY = 110;
-        var rowH = 36;
         for (var i = 0; i < 7; i++) {
-            var moment = Time.now().add(new Time.Duration(i * 86400));
-            var di = Gregorian.info(moment, Time.FORMAT_SHORT);
-            var times = _calc.calculate(loc[:lat], loc[:lon],
-                di.year, di.month, di.day, loc[:tz]);
-            var y = rowY + i * rowH;
-            var color = (i == 0) ? Theme.accent() : Theme.COLOR_TEXT;
+            var di = Gregorian.info(Time.now().add(new Time.Duration(i * 86400)), Time.FORMAT_SHORT);
+            var times = _calc.calculate(loc[:lat], loc[:lon], di.year, di.month, di.day, loc[:tz]);
+            var y = 110 + i * 36;
 
-            dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(Theme.CENTER_X - 100, y,
-                        Fonts.tiny(), _dayLabel(di.day_of_week, i),
-                        Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
-            dc.drawText(Theme.CENTER_X, y,
-                        Fonts.tiny(), TimeFormatter.hhmm(times[:fajr]),
-                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-            dc.drawText(Theme.CENTER_X + 100, y,
-                        Fonts.tiny(), TimeFormatter.hhmm(times[:maghrib]),
-                        Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
+            dc.setColor((i == 0) ? Theme.accent() : Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(Theme.CENTER_X - 100, y, Fonts.tiny(), _dayLabel(di.day_of_week, i), left);
+            dc.drawText(Theme.CENTER_X, y, Fonts.tiny(), TimeFormatter.hhmm(times[:fajr]), center);
+            dc.drawText(Theme.CENTER_X + 100, y, Fonts.tiny(), TimeFormatter.hhmm(times[:maghrib]), right);
         }
     }
 
     function _dayLabel(dow, daysFromToday) {
         if (daysFromToday == 0) {
-            var lang = Settings.language();
-            if (lang.equals("kk")) { return "Бүгін"; }
-            if (lang.equals("ru")) { return "Сегодня"; }
-            return "Today";
+            return PrayerNames.pick("Бүгін", "Сегодня", "Today");
         }
-        var lang = Settings.language();
-        if (lang.equals("kk")) {
-            var kk = ["Жк", "Дс", "Сс", "Ср", "Бс", "Жм", "Сн"];
-            return kk[(dow - 1) % 7];
-        }
-        if (lang.equals("ru")) {
-            var ru = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
-            return ru[(dow - 1) % 7];
-        }
-        var en = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        return en[(dow - 1) % 7];
+        var names = PrayerNames.pick(
+            ["Жк", "Дс", "Сс", "Ср", "Бс", "Жм", "Сн"],
+            ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"],
+            ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]);
+        return names[(dow - 1) % 7];
     }
 
-    // Slim progress bar under the prayer rows. Maps current time onto the
-    // Fajr -> Isha span — 0% at Fajr, 100% at Isha. Outside that range the
-    // bar is empty (night) or full (after Isha).
-    function _drawDayProgress(dc as Graphics.Dc, nowH) as Void {
-        var fajr = _times[:fajr];
-        var isha = _times[:isha];
-        if (fajr == null || isha == null) { return; }
+    function _gregStr(info) {
+        return info.day + " " + PrayerNames.monthShort(info.month) + " " + info.year;
+    }
 
-        var ratio;
-        if (nowH < fajr)      { ratio = 0.0d; }
-        else if (nowH > isha) { ratio = 1.0d; }
-        else                  { ratio = (nowH - fajr) / (isha - fajr); }
-
-        var barW = 280;
-        var barX = Theme.CENTER_X - barW / 2;
-        var barY = 396;
-        // Track
-        dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(barX, barY, barW, 4);
-        // Fill — accent.
-        dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(barX, barY, (barW * ratio).toNumber(), 4);
+    function _hijriStr(info) {
+        var hd = HijriDate.fromGregorian(info.year, info.month, info.day);
+        return hd[:day] + " " + HijriDate.monthName(hd[:month]) + " " + hd[:year];
     }
 
     function _pad2(n) {
-        if (n < 10) { return "0" + n; }
-        return "" + n;
-    }
-
-    function _drawCountdown(dc as Graphics.Dc, info, nowH) as Void {
-        var nextEntry = _calc.getNextPrayer(_times, nowH);
-        var name; var time; var secsLeft;
-        if (nextEntry != null) {
-            name     = PrayerNames.nameOf(nextEntry[:name]);
-            time     = nextEntry[:time];
-            secsLeft = nextEntry[:secondsUntil];
-        } else {
-            // Past Isha — count to tomorrow's Fajr.
-            var tMoment = Time.now().add(new Time.Duration(86400));
-            var tInfo = Gregorian.info(tMoment, Time.FORMAT_SHORT);
-            var loc = _location.getCurrentLocation();
-            var tt = _calc.calculate(loc[:lat], loc[:lon],
-                tInfo.year, tInfo.month, tInfo.day, loc[:tz]);
-            var f = tt[:fajr];
-            if (f == null) { return; }
-            name     = PrayerNames.nameOf(:fajr);
-            time     = f;
-            secsLeft = (((24.0d - nowH) + f) * 3600.0d).toNumber();
-        }
-
-        dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 70,
-                    Fonts.tiny(), PrayerNames.nextLabel(),
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-
-        dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 120,
-                    Fonts.medium(), name,
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-
-        // Hero countdown — biggest number font available.
-        dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 220,
-                    Graphics.FONT_NUMBER_THAI_HOT,
-                    TimeFormatter.countdown(secsLeft),
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-
-        // The actual prayer time itself, smaller. Format depends on locale —
-        // ru/en: "at 19:09" / kk: "сағат 19:09".
-        var lang = Settings.language();
-        var atLabel = lang.equals("kk") ? "сағат" : (lang.equals("ru") ? "в" : "at");
-        dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 288,
-                    Fonts.small(),
-                    atLabel + " " + TimeFormatter.hhmm(time),
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-
-        _drawClockAndDate(dc, info);
-    }
-
-    function _drawPrayer(dc as Graphics.Dc, info, nowH, sym) as Void {
-        var time = _times[sym];
-
-        // Icon + name on one row near the top — icon directly left of name.
-        var icon = _iconFor(sym);
-        var name = PrayerNames.nameOf(sym);
-        var nameFont = Fonts.medium();
-        var nameW = dc.getTextWidthInPixels(name, nameFont);
-        var iconW = (icon != null) ? icon.getWidth() : 0;
-        var groupW = iconW + (icon != null ? 8 : 0) + nameW;
-        var xStart = Theme.CENTER_X - groupW / 2;
-        if (icon != null) {
-            dc.drawBitmap(xStart, 90 - icon.getHeight() / 2, icon);
-            xStart += iconW + 8;
-        }
-        dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
-        dc.drawText(xStart, 90,
-                    nameFont, name,
-                    Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
-
-        dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 170,
-                    Graphics.FONT_NUMBER_THAI_HOT,
-                    TimeFormatter.hhmm(time),
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-
-        if (time != null) {
-            var deltaH = time - nowH;
-            var label;
-            var color;
-            if (deltaH > 0) {
-                color = Theme.COLOR_TEXT_DIM;
-                label = "-" + TimeFormatter.countdown((deltaH * 3600.0d).toNumber());
-            } else {
-                color = Theme.COLOR_TEXT_MUTED;
-                label = "+" + TimeFormatter.countdown((-deltaH * 3600.0d).toNumber());
-            }
-            dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(Theme.CENTER_X, 244,
-                        Fonts.small(), label,
-                        Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-        }
-
-        _drawClockAndDate(dc, info);
-    }
-
-    // Top-of-card current clock; bottom Greg + Hijri dates.
-    // Shared by countdown and per-prayer detail cards.
-    function _drawClockAndDate(dc as Graphics.Dc, info) as Void {
-        // Current clock at top centre.
-        var clockStr = _pad2(info.hour) + ":" + _pad2(info.min);
-        dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 32,
-                    Fonts.small(), clockStr,
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-
-        // Bottom: Greg + Hijri.
-        var monthStr = PrayerNames.monthShort(info.month);
-        var gregStr  = info.day + " " + monthStr + " " + info.year;
-        var hd = HijriDate.fromGregorian(info.year, info.month, info.day);
-        var hijriStr = hd[:day] + " " + HijriDate.monthName(hd[:month]) + " " + hd[:year];
-
-        dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 332,
-                    Fonts.small(), gregStr,
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-        dc.drawText(Theme.CENTER_X, 358,
-                    Fonts.small(), hijriStr,
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        return (n < 10) ? "0" + n : "" + n;
     }
 
     function _colorFor(sym, nextSym, time, nowH) {
@@ -439,21 +265,16 @@ class CardView extends WatchUi.View {
         return Theme.COLOR_TEXT;
     }
 
-    // (Theme.accent already replaced via global edit.)
-
-    // Loaded once per sym — onUpdate runs every second on some cards.
+    // Loaded once per sym.
     function _iconFor(sym) {
         var icon = _icons[sym];
         if (icon != null) { return icon; }
-        var rez = null;
-        if (sym == :fajr)     { rez = Rez.Drawables.IconFajr; }
+        var rez = Rez.Drawables.IconFajr;
         if (sym == :sunrise)  { rez = Rez.Drawables.IconSunrise; }
         if (sym == :dhuhr)    { rez = Rez.Drawables.IconDhuhr; }
         if (sym == :asr)      { rez = Rez.Drawables.IconAsr; }
         if (sym == :maghrib)  { rez = Rez.Drawables.IconMaghrib; }
         if (sym == :isha)     { rez = Rez.Drawables.IconIsha; }
-        if (sym == :tahajjud) { rez = Rez.Drawables.IconTahajjud; }
-        if (rez == null) { return null; }
         icon = WatchUi.loadResource(rez);
         _icons[sym] = icon;
         return icon;
@@ -461,10 +282,9 @@ class CardView extends WatchUi.View {
 
     function _resolveCityLabel(loc) {
         if (loc == null) { return ""; }
-        var lang = Settings.language();
         if (loc[:cityId] != null) {
             var c = Cities.byId(loc[:cityId]);
-            if (c != null) { return Cities.localizedName(c, lang); }
+            if (c != null) { return Cities.localizedName(c, Settings.language()); }
         }
         if (loc[:source] == :gps || loc[:source] == :cached) {
             return "GPS";
@@ -475,16 +295,14 @@ class CardView extends WatchUi.View {
     function _drawPagerDots(dc as Graphics.Dc) as Void {
         var n = ORDER.size();
         var spacing = 16;
-        var total = (n - 1) * spacing;
-        var x0 = Theme.CENTER_X - total / 2;
-        var y  = 380;
+        var x0 = Theme.CENTER_X - (n - 1) * spacing / 2;
         for (var i = 0; i < n; i++) {
             if (i == _idx) {
                 dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
-                dc.fillCircle(x0 + i * spacing, y, 4);
+                dc.fillCircle(x0 + i * spacing, DOTS_Y, 4);
             } else {
                 dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
-                dc.fillCircle(x0 + i * spacing, y, 3);
+                dc.fillCircle(x0 + i * spacing, DOTS_Y, 3);
             }
         }
     }

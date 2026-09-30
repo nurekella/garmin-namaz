@@ -118,15 +118,6 @@ def make_isha():
     dd.line((sx, sy - 3, sx, sy + 3), fill=COLOR, width=STROKE)
     img.save(dst / "icon_isha.png")
 
-# --- Tahajjud — crescent + multiple stars ---
-def make_tahajjud():
-    img = crescent(SIZE // 2, SIZE // 2 + 1, fx(0.26))
-    dd = ImageDraw.Draw(img)
-    for (sx, sy) in [(fx(0.18), fx(0.18)), (fx(0.85), fx(0.30)), (fx(0.20), fx(0.78))]:
-        dd.line((sx - 2, sy, sx + 2, sy), fill=COLOR, width=STROKE)
-        dd.line((sx, sy - 2, sx, sy + 2), fill=COLOR, width=STROKE)
-    img.save(dst / "icon_tahajjud.png")
-
 make_fajr(); make_sunrise(); make_dhuhr(); make_asr()
-make_maghrib(); make_isha(); make_tahajjud()
+make_maghrib(); make_isha()
 print("done")

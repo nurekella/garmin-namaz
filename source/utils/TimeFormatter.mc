@@ -26,6 +26,13 @@ module TimeFormatter {
         return h + ":" + _pad2(m) + ":" + _pad2(s);
     }
 
+    // 3725 -> "1:03" (h:mm, minutes rounded up so 30s left reads "0:01").
+    function hm(totalSec) {
+        if (totalSec == null || totalSec < 0) { return "--:--"; }
+        var m = (totalSec + 59) / 60;
+        return (m / 60) + ":" + _pad2(m % 60);
+    }
+
     // 3725 -> "62 min" (rounded up so 1s left still reads "1 min" not "0").
     function minutesLeft(totalSec) {
         if (totalSec == null || totalSec < 0) { return "--"; }

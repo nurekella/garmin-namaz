@@ -29,13 +29,9 @@ class NamazApp extends Application.AppBase {
         if (WatchUi has :requestUpdate) { WatchUi.requestUpdate(); }
     }
 
-    function onStart(state as Lang.Dictionary?) as Void {
-        // Arm the next prayer-time notification so it fires even after the
-        // app is backgrounded. PrayerNotifier handles the 5-min floor
-        // and rolls past prayers within it.
-        PrayerNotifier.schedule(_calculator, _location);
-    }
-
+    // No scheduling in onStart: the background process runs it too, right
+    // before onTemporalEvent, and would overwrite the record of the alert
+    // being delivered (see PrayerNotifier).
     function onStop(state as Lang.Dictionary?) as Void {
         // Leave the temporal event registered — that's the whole
         // point of background scheduling. Don't clear it on stop.
@@ -46,6 +42,9 @@ class NamazApp extends Application.AppBase {
     }
 
     function getInitialView() as [WatchUi.Views] or [WatchUi.Views, WatchUi.InputDelegates] {
+        // Foreground launch only: arm the next prayer alert so it fires
+        // after the app is closed. BackgroundService keeps the chain going.
+        PrayerNotifier.schedule(_calculator, _location);
         var view = new CardView(_calculator, _location);
         var delegate = new CardDelegate(view, true);
         return [view, delegate];

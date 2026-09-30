@@ -12,6 +12,7 @@ using Toybox.Lang;
 // built-in tiers within ±2 px on the 416×416 face.
 //
 // Fonts are cached per size — getVectorFont allocates on every call.
+(:glance)
 module Fonts {
 
     var _cache = {};

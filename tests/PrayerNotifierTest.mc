@@ -1,28 +1,20 @@
 using Toybox.Test;
-using Toybox.Attention;
+using Toybox.Time;
 using Toybox.Lang;
 
 module PrayerNotifierTest {
 
     (:test)
-    function testVibePatternShape(logger) {
-        var p = PrayerNotifier.getVibePattern();
-        // 3 pulses + 2 silences = 5 entries.
-        if (p.size() != 5) {
-            logger.error("expected 5 vibe entries, got " + p.size());
-            return false;
-        }
-        // Pulses at index 0, 2, 4 — silences at 1, 3.
-        // Each VibeProfile has dutyCycle and duration fields per the
-        // Garmin API; we can't introspect them portably, but the
-        // count and instance type are enough to pin behaviour.
-        for (var i = 0; i < p.size(); i++) {
-            if (!(p[i] instanceof Attention.VibeProfile)) {
-                logger.error("entry " + i + " is not a VibeProfile");
-                return false;
-            }
-        }
-        return true;
+    function testPendingTestAlertSurvivesSchedule(logger) {
+        // Opening the app during the 5-min wait must not replace the
+        // test alert with the next prayer.
+        PrayerNotifier.clearScheduled();
+        PrayerNotifier.scheduleTest();
+        var lp = new LocationProvider();
+        var rec = PrayerNotifier.schedule(Settings.buildCalculator(), lp);
+        var ok = rec != null && rec["test"] == true;
+        PrayerNotifier.clearScheduled();
+        return ok;
     }
 
     (:test)

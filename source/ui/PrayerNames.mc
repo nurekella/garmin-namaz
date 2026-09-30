@@ -10,18 +10,15 @@ module PrayerNames {
 
     const PRAYER_KK = {
         :fajr => "Таң", :sunrise => "Күн", :dhuhr => "Бесін",
-        :asr => "Екінді", :maghrib => "Ақшам", :isha => "Құптан",
-        :tahajjud => "Тәһәжжүд"
+        :asr => "Екінді", :maghrib => "Ақшам", :isha => "Құптан"
     };
     const PRAYER_RU = {
         :fajr => "Фаджр", :sunrise => "Восход", :dhuhr => "Зухр",
-        :asr => "Аср", :maghrib => "Магриб", :isha => "Иша",
-        :tahajjud => "Тахаджуд"
+        :asr => "Аср", :maghrib => "Магриб", :isha => "Иша"
     };
     const PRAYER_EN = {
         :fajr => "Fajr", :sunrise => "Sunrise", :dhuhr => "Dhuhr",
-        :asr => "Asr", :maghrib => "Maghrib", :isha => "Isha",
-        :tahajjud => "Tahajjud"
+        :asr => "Asr", :maghrib => "Maghrib", :isha => "Isha"
     };
 
     const NEXT_KK = "КЕЛЕСІ";
@@ -53,11 +50,22 @@ module PrayerNames {
         return (name != null) ? name : "";
     }
 
-    function jumuah() {
+    // Localized one-off label; honours the in-app language override
+    // (Rez strings only follow the system language).
+    function pick(kk, ru, en) {
         var lang = Settings.language();
-        if (lang.equals("kk")) { return "Жұма"; }
-        if (lang.equals("ru")) { return "Жума"; }
-        return "Jumu'ah";
+        if (lang.equals("kk")) { return kk; }
+        if (lang.equals("ru")) { return ru; }
+        return en;
+    }
+
+    function jumuah() {
+        return pick("Жұма", "Жума", "Jumu'ah");
+    }
+
+    // "1:23" -> "1:23 қалды" / "через 1:23" / "in 1:23".
+    function timeLeft(hm) {
+        return pick(hm + " қалды", "через " + hm, "in " + hm);
     }
 
     function nextLabel() {

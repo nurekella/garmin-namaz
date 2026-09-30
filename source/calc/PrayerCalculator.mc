@@ -1,5 +1,7 @@
 using Toybox.Lang;
 using Toybox.Math;
+using Toybox.Time;
+using Toybox.Time.Gregorian;
 
 // Computes the five daily prayer times plus sunrise for a given date,
 // location and method. Times are returned in fractional local hours
@@ -66,16 +68,6 @@ class PrayerCalculator {
             isha = (hIsha != null) ? solarNoon + hIsha : null;
         }
 
-        // Tahajjud — start of the last third of the night.
-        // Night = Maghrib(today) → Fajr(next day). We approximate the
-        // next-day Fajr as today's Fajr (varies < 2 min day-to-day).
-        var tahajjud = null;
-        if (maghrib != null && fajr != null) {
-            var nightLen = (24.0d - maghrib) + fajr;   // hours
-            tahajjud = maghrib + nightLen * 2.0d / 3.0d;
-            if (tahajjud >= 24.0d) { tahajjud -= 24.0d; }
-        }
-
         return {
             :fajr      => _withOffsets(fajr,    :fajr),
             :sunrise   => _withOffsets(sunrise, :sunrise),
@@ -83,7 +75,6 @@ class PrayerCalculator {
             :asr       => _withOffsets(asr,     :asr),
             :maghrib   => _withOffsets(maghrib, :maghrib),
             :isha      => _withOffsets(isha,    :isha),
-            :tahajjud  => tahajjud,
             :solarNoon => solarNoon
         };
     }
@@ -106,6 +97,26 @@ class PrayerCalculator {
             }
         }
         return null;
+    }
+
+    // Next entry from `nowMoment` for `loc`, rolling over to tomorrow's
+    // Fajr after Isha. Shared by the cards and the glance.
+    // Result: same shape as getNextPrayer, or null (polar night).
+    function nextAfter(loc, nowMoment) {
+        var info = Gregorian.info(nowMoment, Time.FORMAT_SHORT);
+        var nowH = info.hour + info.min / 60.0d + info.sec / 3600.0d;
+        var today = calculate(loc[:lat], loc[:lon], info.year, info.month, info.day, loc[:tz]);
+        var next = getNextPrayer(today, nowH);
+        if (next != null) { return next; }
+
+        var t = Gregorian.info(nowMoment.add(new Time.Duration(86400)), Time.FORMAT_SHORT);
+        var fajr = calculate(loc[:lat], loc[:lon], t.year, t.month, t.day, loc[:tz])[:fajr];
+        if (fajr == null) { return null; }
+        return {
+            :name         => :fajr,
+            :time         => fajr,
+            :secondsUntil => (((24.0d - nowH) + fajr) * 3600.0d).toNumber()
+        };
     }
 
     function _angleOrDefault(key, fallback) {

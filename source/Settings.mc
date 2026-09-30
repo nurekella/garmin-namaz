@@ -15,7 +15,7 @@ module Settings {
     // Hardcoded mirror of manifest.xml version="..." — Connect IQ doesn't
     // expose manifest values at runtime, so the on-watch settings menu
     // shows this constant. Bump in lockstep with the manifest.
-    const VERSION = "1.6.1";
+    const VERSION = "1.7.0";
 
     // "kk" / "ru" / "en" — falls back to the system Rez locale when user
     // chose "auto" or never opened settings.
@@ -23,8 +23,7 @@ module Settings {
     // scopes — uses System.getDeviceSettings (Rez is unavailable in
     // glance/background binaries).
     function language() {
-        var v = Application.Properties.getValue("langIdx");
-        var idx = (v == null) ? 0 : v.toNumber();
+        var idx = langIdx();
         if (idx == 1) { return "kk"; }
         if (idx == 2) { return "ru"; }
         if (idx == 3) { return "en"; }
@@ -40,27 +39,30 @@ module Settings {
         return (v == 1) ? 1 : 2;
     }
 
-    // -1 (or out-of-range) means auto-resolve via GPS / cache / fallback.
+    // 0 = auto, 1 = kk, 2 = ru, 3 = en.
+    function langIdx() {
+        var idx = intProp("langIdx");
+        return (idx < 0 || idx > 3) ? 0 : idx;
+    }
+
+    // Index into Cities.all(), or -1 = auto (GPS / cache / fallback).
+    function manualCityIdx() {
+        var idx = intProp("manualCityIdx");
+        if (Application.Properties.getValue("manualCityIdx") == null) { idx = -1; }
+        return (idx < 0 || idx >= Cities.all().size()) ? -1 : idx;
+    }
+
     function manualCityId() {
-        var v = Application.Properties.getValue("manualCityIdx");
-        if (v == null) { return null; }
-        var idx = v.toNumber();
-        if (idx < 0 || idx >= Cities.all().size()) { return null; }
-        return Cities.all()[idx][:id];
+        var idx = manualCityIdx();
+        return (idx < 0) ? null : Cities.all()[idx][:id];
     }
 
     function prealertFajrMinutes() {
-        return _intProp("prealertFajr");
+        return intProp("prealertFajr");
     }
 
     function prealertOtherMinutes() {
-        return _intProp("prealertOther");
-    }
-
-    function vibePatternIdx() {
-        var v = Application.Properties.getValue("vibePattern");
-        if (v == null) { return 0; }
-        return v.toNumber();
+        return intProp("prealertOther");
     }
 
     function themeIdx() {
@@ -75,12 +77,12 @@ module Settings {
     // PrayerCalculator expects: { :fajr => Number, ... } in minutes.
     function userOffsets() {
         return {
-            :fajr    => _intProp("offsetFajr"),
-            :sunrise => _intProp("offsetSunrise"),
-            :dhuhr   => _intProp("offsetDhuhr"),
-            :asr     => _intProp("offsetAsr"),
-            :maghrib => _intProp("offsetMaghrib"),
-            :isha    => _intProp("offsetIsha")
+            :fajr    => intProp("offsetFajr"),
+            :sunrise => intProp("offsetSunrise"),
+            :dhuhr   => intProp("offsetDhuhr"),
+            :asr     => intProp("offsetAsr"),
+            :maghrib => intProp("offsetMaghrib"),
+            :isha    => intProp("offsetIsha")
         };
     }
 
@@ -113,7 +115,7 @@ module Settings {
         locator.setManualCity(id);  // setManualCity(null) clears
     }
 
-    function _intProp(key) {
+    function intProp(key) {
         var v = Application.Properties.getValue(key);
         if (v == null) { return 0; }
         return v.toNumber();

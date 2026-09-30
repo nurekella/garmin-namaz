@@ -1,4 +1,3 @@
-using Toybox.Attention;
 using Toybox.Background;
 using Toybox.Notifications;
 using Toybox.Time;
@@ -18,8 +17,11 @@ using Toybox.Lang;
 //     firing, BackgroundService re-registers for the next prayer.
 //   * Toybox.Attention is NOT available to the background process —
 //     even `Attention has :vibrate` throws there. So the alert is a
-//     system notification (the watch buzzes per its own notification
-//     settings); custom vibe patterns only apply in the foreground.
+//     system notification; the watch buzzes per its own notification
+//     settings.
+//   * The background process also runs AppBase.onStart, so scheduling
+//     must not happen there: it would overwrite the record of the event
+//     being delivered before notifyNow reads it.
 //   * The 5 daily obligatory prayers trigger an alert. Sunrise is a
 //     time marker, not a prayer — we skip it.
 (:background, :glance)
@@ -29,57 +31,13 @@ module PrayerNotifier {
     const STORAGE_KEY_ERR      = "last_schedule_err";
     const MIN_SCHEDULE_GAP_SEC = 5 * 60;
 
-    // Foreground only (Attention is off-limits in the background).
-    // 4 user-selectable patterns — Settings.vibePatternIdx picks one.
-    //   0 = Standard  (3 pulses × 500 ms, default)
-    //   1 = Short     (1 pulse  × 600 ms)
-    //   2 = Long      (5 pulses × 500 ms)
-    //   3 = Double    (2 short pulses tight together)
-    function getVibePattern() {
-        var idx = 0;
-        if (Toybox has :Application) {
-            idx = Settings.vibePatternIdx();
-        }
-        if (idx == 1) {
-            return [ new Attention.VibeProfile(100, 600) ];
-        }
-        if (idx == 2) {
-            return [
-                new Attention.VibeProfile(100, 500),
-                new Attention.VibeProfile(0,   250),
-                new Attention.VibeProfile(100, 500),
-                new Attention.VibeProfile(0,   250),
-                new Attention.VibeProfile(100, 500),
-                new Attention.VibeProfile(0,   250),
-                new Attention.VibeProfile(100, 500),
-                new Attention.VibeProfile(0,   250),
-                new Attention.VibeProfile(100, 500)
-            ];
-        }
-        if (idx == 3) {
-            return [
-                new Attention.VibeProfile(100, 200),
-                new Attention.VibeProfile(0,   120),
-                new Attention.VibeProfile(100, 200)
-            ];
-        }
-        // default — Standard
-        return [
-            new Attention.VibeProfile(100, 500),
-            new Attention.VibeProfile(0,   300),
-            new Attention.VibeProfile(100, 500),
-            new Attention.VibeProfile(0,   300),
-            new Attention.VibeProfile(100, 500)
-        ];
-    }
-
-    // Background-safe alert for the event recorded by schedule().
-    // Title was resolved at schedule time ("Dhuhr 13:00"). The simulator
-    // renders only the title, so the time lives there, not in subTitle.
+    // Background-safe alert for the event recorded by schedule() or
+    // scheduleTest(). Title was resolved at schedule time ("Dhuhr 13:00");
+    // the simulator renders only the title, so the time lives there.
     function notifyNow() {
-        if (!Settings.notificationsEnabled()) { return; }
         var rec = Storage.get(STORAGE_KEY_NEXT);
         if (rec == null || rec["title"] == null) { return; }
+        if (!Settings.notificationsEnabled() && rec["test"] != true) { return; }
         if (Toybox has :Notifications) {
             Notifications.showNotification(rec["title"], PrayerNames.prayerTimeLabel(),
                 { :dismissPrevious => true });
@@ -89,11 +47,35 @@ module PrayerNotifier {
         }
     }
 
+    // Menu "Test notification": a real background alert ~5 min from now,
+    // through the same path as a prayer alert. Returns false if the
+    // platform refused the event.
+    function scheduleTest() {
+        var ts = Time.now().value() + MIN_SCHEDULE_GAP_SEC + 5;
+        Storage.set(STORAGE_KEY_NEXT, {
+            "title"     => PrayerNames.pick("Тексеру", "Проверка", "Test"),
+            "timestamp" => ts,
+            "test"      => true
+        });
+        try {
+            Background.registerForTemporalEvent(new Time.Moment(ts));
+        } catch (e) {
+            return false;
+        }
+        return true;
+    }
+
     // Computes the next alert (see pickAlert) and registers a temporal
     // event for it. Returns the stored record
     // { "title", "timestamp" }, or null on failure / nothing
     // schedulable.
     function schedule(calc, locationProvider) {
+        // A pending test alert wins until it has fired.
+        var cur = Storage.get(STORAGE_KEY_NEXT);
+        if (cur != null && cur["test"] == true && cur["timestamp"] > Time.now().value()) {
+            return cur;
+        }
+
         var loc = locationProvider.getCurrentLocation();
         if (loc == null) { return null; }
 
@@ -116,10 +98,8 @@ module PrayerNotifier {
             Background.registerForTemporalEvent(new Time.Moment(target[:timestampSec]));
             Storage.remove(STORAGE_KEY_ERR);
         } catch (e) {
-            // Most likely: requested time was inside another scheduled
-            // event's lockout, the 5-min floor, OR Background-Service
-            // permission was denied for this app. Capture the message for
-            // the diagnostic line on the overview card.
+            // Most likely: inside the 5-min floor after the last run, or
+            // Background permission denied. Kept for debugging.
             var msg = "?";
             if (e != null && e has :getErrorMessage) {
                 msg = e.getErrorMessage();
@@ -129,6 +109,7 @@ module PrayerNotifier {
         }
         return record;
     }
+
 
     function getScheduled() {
         return Storage.get(STORAGE_KEY_NEXT);

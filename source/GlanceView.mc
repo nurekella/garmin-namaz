@@ -1,25 +1,37 @@
 using Toybox.WatchUi;
 using Toybox.Graphics;
+using Toybox.Time;
 using Toybox.Lang;
 
-// Minimal glance: only the app title is shown (rendered by the system
-// from manifest AppName). User reported the prior glance content was
-// read as the launcher name and confused them — kept this stub so the
-// glance carousel still works as a tap-target, no custom drawing.
+// Glance: next prayer and time left, e.g.
+//   Бесін 13:05
+//   1:23 қалды
 (:glance)
 class GlanceView extends WatchUi.GlanceView {
 
+    var _calc;
+    var _location;
+
     function initialize(calc, location) {
         GlanceView.initialize();
+        _calc = calc;
+        _location = location;
     }
 
     function onUpdate(dc as Graphics.Dc) as Void {
         dc.setColor(Theme.COLOR_BG, Theme.COLOR_BG);
         dc.clear();
 
+        var h = dc.getHeight();
+        var left = Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER;
+        var next = _calc.nextAfter(_location.getCurrentLocation(), Time.now());
+        if (next == null) { return; }
+
+        dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
+        dc.drawText(0, h * 3 / 10, Fonts.small(),
+                    PrayerNames.nameOf(next[:name]) + " " + TimeFormatter.hhmm(next[:time]), left);
         dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(dc.getWidth() / 2, dc.getHeight() / 2,
-                    Graphics.FONT_MEDIUM, "Namaz KZ",
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(0, h * 7 / 10, Fonts.tiny(),
+                    PrayerNames.timeLeft(TimeFormatter.hm(next[:secondsUntil])), left);
     }
 }
