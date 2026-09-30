@@ -176,11 +176,9 @@ class CardView extends WatchUi.View {
 
         // ---- Friday Jumu'ah strip: overrides the city line once a week ----
         if (info.day_of_week == 6) {
-            var lang = Settings.language();
-            var jumLabel = lang.equals("kk") ? "Жұма" : (lang.equals("ru") ? "Жума" : "Jumu'ah");
             dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
             dc.drawText(Theme.CENTER_X, 116,
-                        Fonts.small(), jumLabel,
+                        Fonts.small(), PrayerNames.jumuah(),
                         Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         }
 

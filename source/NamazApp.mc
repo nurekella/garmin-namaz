@@ -30,7 +30,7 @@ class NamazApp extends Application.AppBase {
     }
 
     function onStart(state as Lang.Dictionary?) as Void {
-        // Arm the next prayer-time vibration so it fires even after the
+        // Arm the next prayer-time notification so it fires even after the
         // app is backgrounded. PrayerNotifier handles the 5-min floor
         // and rolls past prayers within it.
         PrayerNotifier.schedule(_calculator, _location);

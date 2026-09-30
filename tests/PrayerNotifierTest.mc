@@ -60,6 +60,7 @@ module PrayerNotifierTest {
         // No pre-alert: next prayer, sunrise ignored.
         var r = _pick(6.0d, 0, 0);
         Test.assertEqual(r[:name], :dhuhr);
+        Test.assert(r[:time] == 13.0d);   // prayer time, shown in the notification
         Test.assert(_near(r[:deltaSec], 7 * 3600));
 
         // Pre-alert 10 min: fires at 12:50 ...

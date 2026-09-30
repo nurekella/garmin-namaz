@@ -53,6 +53,13 @@ module PrayerNames {
         return (name != null) ? name : "";
     }
 
+    function jumuah() {
+        var lang = Settings.language();
+        if (lang.equals("kk")) { return "Жұма"; }
+        if (lang.equals("ru")) { return "Жума"; }
+        return "Jumu'ah";
+    }
+
     function nextLabel() {
         var lang = Settings.language();
         if (lang.equals("kk")) { return NEXT_KK; }

@@ -1,29 +1,35 @@
 using Toybox.Attention;
 using Toybox.Background;
+using Toybox.Notifications;
 using Toybox.Time;
 using Toybox.Time.Gregorian;
 using Toybox.Lang;
 
 // Schedules a temporal event for the next obligatory-prayer time and
-// fires a vibration when that event lands. The Background subsystem
-// runs the registered ServiceDelegate at the requested moment even
-// when the app is closed.
+// posts a system notification when that event lands. The Background
+// subsystem runs the registered ServiceDelegate at the requested moment
+// even when the app is closed.
 //
 // Notes about Garmin's Background scheduling:
-//   * `Background.registerForTemporalEvent` minimum interval is 5 min;
-//     an imminent alert is pushed out to the 5-min floor (see pickAlert).
+//   * `Background.registerForTemporalEvent` throws when the event is
+//     less than 5 min after the previous run; an imminent alert is
+//     pushed out to that floor (see pickAlert).
 //   * Only one temporal event can be registered at a time. After
 //     firing, BackgroundService re-registers for the next prayer.
-//   * The 5 daily obligatory prayers trigger vibration. Sunrise is a
+//   * Toybox.Attention is NOT available to the background process —
+//     even `Attention has :vibrate` throws there. So the alert is a
+//     system notification (the watch buzzes per its own notification
+//     settings); custom vibe patterns only apply in the foreground.
+//   * The 5 daily obligatory prayers trigger an alert. Sunrise is a
 //     time marker, not a prayer — we skip it.
 (:background, :glance)
 module PrayerNotifier {
 
     const STORAGE_KEY_NEXT     = "scheduled_prayer";
     const STORAGE_KEY_ERR      = "last_schedule_err";
-    const STORAGE_KEY_LASTVIBE = "last_vibrate_ts";
     const MIN_SCHEDULE_GAP_SEC = 5 * 60;
 
+    // Foreground only (Attention is off-limits in the background).
     // 4 user-selectable patterns — Settings.vibePatternIdx picks one.
     //   0 = Standard  (3 pulses × 500 ms, default)
     //   1 = Short     (1 pulse  × 600 ms)
@@ -67,43 +73,26 @@ module PrayerNotifier {
         ];
     }
 
-    // Stronger 5-pulse pattern for Jumu'ah (Friday Dhuhr).
-    function getJumuahVibePattern() {
-        return [
-            new Attention.VibeProfile(100, 700),
-            new Attention.VibeProfile(0,   250),
-            new Attention.VibeProfile(100, 700),
-            new Attention.VibeProfile(0,   250),
-            new Attention.VibeProfile(100, 700),
-            new Attention.VibeProfile(0,   250),
-            new Attention.VibeProfile(100, 700),
-            new Attention.VibeProfile(0,   250),
-            new Attention.VibeProfile(100, 700)
-        ];
-    }
-
-    function vibrateNow() {
-        if (!(Attention has :vibrate)) { return; }
+    // Background-safe alert for the event recorded by schedule().
+    // Title was resolved at schedule time ("Dhuhr 13:00"). The simulator
+    // renders only the title, so the time lives there, not in subTitle.
+    function notifyNow() {
         if (!Settings.notificationsEnabled()) { return; }
-        var pattern = getVibePattern();
         var rec = Storage.get(STORAGE_KEY_NEXT);
-        if (rec != null && "dhuhr".equals(rec["name"])) {
-            // day_of_week: 1=Sunday..7=Saturday; Friday = 6.
-            var dow = Gregorian.info(Time.now(), Time.FORMAT_SHORT).day_of_week;
-            if (dow == 6) {
-                pattern = getJumuahVibePattern();
-            }
+        if (rec == null || rec["title"] == null) { return; }
+        if (Toybox has :Notifications) {
+            Notifications.showNotification(rec["title"], PrayerNames.prayerTimeLabel(),
+                { :dismissPrevious => true });
+        } else {
+            // API < 5.1 (e.g. Venu Sq 2): system "open app?" prompt.
+            Background.requestApplicationWake(rec["title"]);
         }
-        Attention.vibrate(pattern);
-        // Record that the platform actually fired the temporal event and we
-        // got here — diagnostic for when users say "no vibration".
-        Storage.set(STORAGE_KEY_LASTVIBE, Time.now().value());
     }
 
-    // Computes the next obligatory-prayer moment (skipping anything in
-    // the next 5 min) and registers a temporal event for it. Returns a
-    // dictionary { "name", "timestamp" } describing the registered
-    // event, or null on failure / nothing schedulable.
+    // Computes the next alert (see pickAlert) and registers a temporal
+    // event for it. Returns the stored record
+    // { "title", "timestamp" }, or null on failure / nothing
+    // schedulable.
     function schedule(calc, locationProvider) {
         var loc = locationProvider.getCurrentLocation();
         if (loc == null) { return null; }
@@ -111,10 +100,14 @@ module PrayerNotifier {
         var target = _findNextNotifiable(calc, loc);
         if (target == null) { return null; }
 
-        // Explicit string: Symbol.toString() yields "dhuhr" (no colon), so
-        // the old ":dhuhr" comparison never matched and Jumu'ah never fired.
+        var title = PrayerNames.nameOf(target[:name]);
+        if (target[:name] == :dhuhr) {
+            // day_of_week: 1=Sunday..7=Saturday; Friday = 6.
+            var info = Gregorian.info(new Time.Moment(target[:timestampSec]), Time.FORMAT_SHORT);
+            if (info.day_of_week == 6) { title = PrayerNames.jumuah(); }
+        }
         var record = {
-            "name"      => (target[:name] == :dhuhr) ? "dhuhr" : "other",
+            "title"     => title + " " + TimeFormatter.hhmm(target[:time]),
             "timestamp" => target[:timestampSec]
         };
         Storage.set(STORAGE_KEY_NEXT, record);
@@ -145,9 +138,6 @@ module PrayerNotifier {
         return Storage.get(STORAGE_KEY_ERR);
     }
 
-    function getLastVibrateTs() {
-        return Storage.get(STORAGE_KEY_LASTVIBE);
-    }
 
     function clearScheduled() {
         Storage.remove(STORAGE_KEY_NEXT);
@@ -191,6 +181,7 @@ module PrayerNotifier {
         if (pick == null) { return null; }
         return {
             :name         => pick[:name],
+            :time         => pick[:time],
             :timestampSec => nowMoment.value() + pick[:deltaSec]
         };
     }
@@ -200,7 +191,8 @@ module PrayerNotifier {
     // take the earliest one still ahead of `nowH`. An alert that falls
     // inside the platform's 5-min floor is pushed to the floor instead of
     // being dropped (a few minutes late beats a silent prayer).
-    // Returns { :name => Symbol, :deltaSec => Number } or null.
+    // Returns { :name => Symbol, :time => prayer hours, :deltaSec => Number }
+    // or null.
     function pickAlert(times, nowH, preFajr, preOther) {
         var notifiable = [:fajr, :dhuhr, :asr, :maghrib, :isha];
         var bestSym  = null;
@@ -222,6 +214,6 @@ module PrayerNotifier {
         if (bestSym == null) { return null; }
         var deltaSec = ((bestTime - nowH) * 3600.0d).toNumber();
         if (deltaSec < MIN_SCHEDULE_GAP_SEC) { deltaSec = MIN_SCHEDULE_GAP_SEC; }
-        return { :name => bestSym, :deltaSec => deltaSec };
+        return { :name => bestSym, :time => times[bestSym], :deltaSec => deltaSec };
     }
 }
