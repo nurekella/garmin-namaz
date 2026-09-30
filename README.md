@@ -84,7 +84,7 @@ source/
   notify/      вибрация + scheduling (PrayerNotifier)
   ui/          темы и локализованные имена (Theme, PrayerNames)
   utils/       вспомогательные (TimeFormatter, Storage)
-  NamazApp.mc, NamazView.mc, NamazDelegate.mc, GlanceView.mc, BackgroundService.mc
+  NamazApp.mc, CardView.mc (экраны + CardDelegate), GlanceView.mc, BackgroundService.mc
 resources/     strings (en/ru/kk), settings, menus, drawables
 tests/         87 unit-тестов
 ```

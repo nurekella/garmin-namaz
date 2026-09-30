@@ -49,22 +49,12 @@ module Settings {
         return Cities.all()[idx][:id];
     }
 
-    function prealertMinutes() {
-        var v = Application.Properties.getValue("prealertMin");
-        if (v == null) { return 0; }
-        return v.toNumber();
-    }
-
     function prealertFajrMinutes() {
-        var v = Application.Properties.getValue("prealertFajr");
-        if (v == null) { return prealertMinutes(); }   // legacy fallback
-        return v.toNumber();
+        return _intProp("prealertFajr");
     }
 
     function prealertOtherMinutes() {
-        var v = Application.Properties.getValue("prealertOther");
-        if (v == null) { return prealertMinutes(); }
-        return v.toNumber();
+        return _intProp("prealertOther");
     }
 
     function vibePatternIdx() {

@@ -11,8 +11,7 @@ using Toybox.Lang;
 //
 // Notes about Garmin's Background scheduling:
 //   * `Background.registerForTemporalEvent` minimum interval is 5 min;
-//     events scheduled closer than that throw. We skip the imminent
-//     prayer and arm for the one after.
+//     an imminent alert is pushed out to the 5-min floor (see pickAlert).
 //   * Only one temporal event can be registered at a time. After
 //     firing, BackgroundService re-registers for the next prayer.
 //   * The 5 daily obligatory prayers trigger vibration. Sunrise is a
@@ -88,7 +87,7 @@ module PrayerNotifier {
         if (!Settings.notificationsEnabled()) { return; }
         var pattern = getVibePattern();
         var rec = Storage.get(STORAGE_KEY_NEXT);
-        if (rec != null && rec["name"] != null && rec["name"].equals(":dhuhr")) {
+        if (rec != null && "dhuhr".equals(rec["name"])) {
             // day_of_week: 1=Sunday..7=Saturday; Friday = 6.
             var dow = Gregorian.info(Time.now(), Time.FORMAT_SHORT).day_of_week;
             if (dow == 6) {
@@ -112,8 +111,10 @@ module PrayerNotifier {
         var target = _findNextNotifiable(calc, loc);
         if (target == null) { return null; }
 
+        // Explicit string: Symbol.toString() yields "dhuhr" (no colon), so
+        // the old ":dhuhr" comparison never matched and Jumu'ah never fired.
         var record = {
-            "name"      => target[:name].toString(),
+            "name"      => (target[:name] == :dhuhr) ? "dhuhr" : "other",
             "timestamp" => target[:timestampSec]
         };
         Storage.set(STORAGE_KEY_NEXT, record);
@@ -167,61 +168,60 @@ module PrayerNotifier {
         return Settings.prealertOtherMinutes();
     }
 
-    // Walks today's obligatory prayer slots; if none qualifies (all
-    // already past or inside the 5-min lockout), rolls to tomorrow's
-    // Fajr. Returns null if even tomorrow's Fajr is unavailable
-    // (e.g. polar latitudes — the watch falls back to "no schedule").
+    // Next alert from today's schedule, else tomorrow's. Returns null if
+    // neither day has a usable time (e.g. polar latitudes).
     function _findNextNotifiable(calc, loc) {
-        var notifiable = [:fajr, :dhuhr, :asr, :maghrib, :isha];
-
         var nowMoment = Time.now();
-        var nowSec    = nowMoment.value();
         var nowInfo   = Gregorian.info(nowMoment, Time.FORMAT_SHORT);
         var nowH      = nowInfo.hour + nowInfo.min / 60.0d + nowInfo.sec / 3600.0d;
-        var minH      = nowH + (MIN_SCHEDULE_GAP_SEC.toDouble() / 3600.0d);
+        var preFajr   = _prealertFor(:fajr);
+        var preOther  = _prealertFor(:dhuhr);
 
         var today = calc.calculate(loc[:lat], loc[:lon],
             nowInfo.year, nowInfo.month, nowInfo.day, loc[:tz]);
+        var pick = pickAlert(today, nowH, preFajr, preOther);
 
+        if (pick == null) {
+            var tInfo = Gregorian.info(nowMoment.add(new Time.Duration(86400)), Time.FORMAT_SHORT);
+            var tomorrow = calc.calculate(loc[:lat], loc[:lon],
+                tInfo.year, tInfo.month, tInfo.day, loc[:tz]);
+            // Tomorrow's hours measured from today's clock: shift "now" back 24h.
+            pick = pickAlert(tomorrow, nowH - 24.0d, preFajr, preOther);
+        }
+        if (pick == null) { return null; }
+        return {
+            :name         => pick[:name],
+            :timestampSec => nowMoment.value() + pick[:deltaSec]
+        };
+    }
+
+    // Pure scheduling rule. Every obligatory prayer yields up to two alert
+    // points — the pre-alert (T - pre) and the prayer itself (T) — and we
+    // take the earliest one still ahead of `nowH`. An alert that falls
+    // inside the platform's 5-min floor is pushed to the floor instead of
+    // being dropped (a few minutes late beats a silent prayer).
+    // Returns { :name => Symbol, :deltaSec => Number } or null.
+    function pickAlert(times, nowH, preFajr, preOther) {
+        var notifiable = [:fajr, :dhuhr, :asr, :maghrib, :isha];
         var bestSym  = null;
         var bestTime = null;
         for (var i = 0; i < notifiable.size(); i++) {
             var sym = notifiable[i];
-            var t = today[sym];
+            var t = times[sym];
             if (t == null) { continue; }
-            if (t < minH) { continue; }
-            if (bestTime == null || t < bestTime) {
-                bestTime = t;
-                bestSym  = sym;
+            var pre = (sym == :fajr) ? preFajr : preOther;
+            var points = [t - pre / 60.0d, t];
+            for (var j = 0; j < 2; j++) {
+                var p = points[j];
+                if (p > nowH && (bestTime == null || p < bestTime)) {
+                    bestTime = p;
+                    bestSym  = sym;
+                }
             }
         }
-
-        if (bestSym != null) {
-            var preMin = _prealertFor(bestSym);
-            var deltaSec = ((bestTime - nowH) * 3600.0d).toNumber() - preMin * 60;
-            // Don't shift the alert into the past; if the pre-alert window
-            // straddles the 5-min floor, fall back to no pre-alert.
-            if (deltaSec < MIN_SCHEDULE_GAP_SEC) {
-                deltaSec = ((bestTime - nowH) * 3600.0d).toNumber();
-            }
-            return {
-                :name         => bestSym,
-                :timestampSec => nowSec + deltaSec
-            };
-        }
-
-        // Roll to tomorrow's Fajr.
-        var tomMoment = nowMoment.add(new Time.Duration(86400));
-        var tInfo = Gregorian.info(tomMoment, Time.FORMAT_SHORT);
-        var tomTimes = calc.calculate(loc[:lat], loc[:lon],
-            tInfo.year, tInfo.month, tInfo.day, loc[:tz]);
-        var fajr = tomTimes[:fajr];
-        if (fajr == null) { return null; }
-        var hoursUntil = (24.0d - nowH) + fajr;
-        var deltaSec   = (hoursUntil * 3600.0d).toNumber();
-        return {
-            :name         => :fajr,
-            :timestampSec => nowSec + deltaSec
-        };
+        if (bestSym == null) { return null; }
+        var deltaSec = ((bestTime - nowH) * 3600.0d).toNumber();
+        if (deltaSec < MIN_SCHEDULE_GAP_SEC) { deltaSec = MIN_SCHEDULE_GAP_SEC; }
+        return { :name => bestSym, :deltaSec => deltaSec };
     }
 }

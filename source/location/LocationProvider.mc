@@ -2,6 +2,7 @@ using Toybox.Position;
 using Toybox.Time;
 using Toybox.Lang;
 using Toybox.Math;
+using Toybox.System;
 
 // LocationProvider resolves "where is the user right now" with this
 // priority chain:
@@ -9,24 +10,24 @@ using Toybox.Math;
 //   1. Manual city override (Storage[:manual_city])
 //   2. Cached GPS fix within TTL (default 24h) — battery-friendly
 //   3. Live GPS fix from Position.getInfo() if quality is GOOD/USABLE
-//   4. Fallback city (Almaty)
+//   4. Stale cached GPS fix — the last place we saw beats a guess
+//   5. Fallback city (Almaty)
 //
 // We prefer fresh cache over re-reading GPS for two reasons: prayer-time
 // calculation only needs ±a few km of position accuracy, and re-acquiring
 // GPS at every UI refresh would tank battery. Any GPS fix we do see is
-// written back to Storage so subsequent reads stay fast.
+// written back to Storage so subsequent reads stay fast. CardView asks
+// for a fresh fix each time the app is opened (see startContinuous).
 //
-// Time zone: hard-coded UTC+5 for KZ. If the watch is taken abroad we
-// still report tz=5 — for v1.0 KZ-only this is correct; v1.1 should
-// resolve tz from longitude or system clock.
+// Time zone: always the watch's current UTC offset (DST included), since
+// the UI and temporal events run on the watch clock. Manual cities are
+// therefore shown in watch-local time too.
 (:glance, :background)
 class LocationProvider {
 
     static const KEY_LAST_LOCATION = "last_location";
     static const KEY_MANUAL_CITY   = "manual_city";
     static const DEFAULT_TTL_SEC   = 86400;   // 24 hours
-    static const SIGNIFICANT_KM    = 5.0d;    // movement that invalidates cache early
-    static const KZ_TZ_HOURS       = 5;
 
     var _gpsActive;
 
@@ -57,6 +58,8 @@ class LocationProvider {
             saveLocation(live);
             return live;
         }
+
+        if (cached != null) { return cached; }
 
         return _fromCity(Cities.fallback(), :fallback);
     }
@@ -105,7 +108,7 @@ class LocationProvider {
         return {
             :lat       => degs[0].toDouble(),
             :lon       => degs[1].toDouble(),
-            :tz        => KZ_TZ_HOURS,
+            :tz        => deviceTz(),
             :timestamp => ts,
             :accuracy  => acc,
             :source    => :gps
@@ -148,7 +151,7 @@ class LocationProvider {
         return {
             :lat       => raw["lat"],
             :lon       => raw["lon"],
-            :tz        => raw["tz"],
+            :tz        => deviceTz(),
             :timestamp => raw["timestamp"],
             :accuracy  => raw["accuracy"],
             :source    => :cached
@@ -171,6 +174,14 @@ class LocationProvider {
         Storage.remove(KEY_LAST_LOCATION);
     }
 
+    // Watch's current UTC offset in hours.
+    // ponytail: today's offset is reused for other dates (week view,
+    // tomorrow's Fajr), so those are off by the DST shift for a day or two
+    // around a DST change; resolve a per-date offset if that ever matters.
+    function deviceTz() {
+        return System.getClockTime().timeZoneOffset / 3600.0d;
+    }
+
     // ---------- private ----------
 
     function _readGps() {
@@ -186,7 +197,7 @@ class LocationProvider {
         return {
             :lat    => city[:lat],
             :lon    => city[:lon],
-            :tz     => city[:tz],
+            :tz     => deviceTz(),
             :cityId => city[:id],
             :source => source
         };

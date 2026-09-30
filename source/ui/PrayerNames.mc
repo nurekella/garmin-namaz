@@ -46,9 +46,11 @@ module PrayerNames {
 
     function nameOf(prayerSym) {
         var lang = Settings.language();
-        if (lang.equals("kk")) { return PRAYER_KK[prayerSym]; }
-        if (lang.equals("ru")) { return PRAYER_RU[prayerSym]; }
-        return PRAYER_EN[prayerSym];
+        var table = PRAYER_EN;
+        if (lang.equals("kk")) { table = PRAYER_KK; }
+        if (lang.equals("ru")) { table = PRAYER_RU; }
+        var name = table[prayerSym];
+        return (name != null) ? name : "";
     }
 
     function nextLabel() {

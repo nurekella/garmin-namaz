@@ -5,6 +5,8 @@ using Toybox.Time;
 using Toybox.Time.Gregorian;
 using Toybox.Timer;
 using Toybox.Lang;
+using Toybox.Position;
+using Toybox.System;
 
 // Card-deck layout. One prayer per card, full-screen. Swipe / DOWN-UP
 // to flip through. Auto-opens at the next prayer.
@@ -25,6 +27,8 @@ class CardView extends WatchUi.View {
     var _times;
     var _today_day;
     var _idx;          // currently displayed prayer index (0..5)
+    var _lastMin;      // minute of the last tick-driven redraw
+    var _icons = {};   // sym -> loaded bitmap
 
     function initialize(calc, location) {
         View.initialize();
@@ -37,13 +41,38 @@ class CardView extends WatchUi.View {
         _idx = _initialIdx();
         if (_timer == null) { _timer = new Timer.Timer(); }
         _timer.start(method(:_tick), 1000, true);
+        // Nothing else ever turns GPS on — without this, "auto" users only
+        // get a position if another activity happened to leave a good fix.
+        if (_location.getManualCity() == null) {
+            _location.startContinuous(method(:onPosition));
+        }
     }
 
     function onHide() as Void {
         if (_timer != null) { _timer.stop(); }
+        _location.stopGps();
     }
 
-    function _tick() as Void { WatchUi.requestUpdate(); }
+    // First usable fix: cache it, stop GPS, recompute and re-arm the alarm.
+    function onPosition(info as Position.Info) as Void {
+        var loc = _location.fromInfo(info);
+        if (loc == null) { return; }   // keep listening until a usable fix
+        _location.stopGps();
+        _location.saveLocation(loc);
+        _refresh();
+        PrayerNotifier.schedule(_calc, _location);
+        WatchUi.requestUpdate();
+    }
+
+    // Only the countdown / per-prayer cards show seconds; the overview and
+    // week cards redraw once a minute.
+    function _tick() as Void {
+        var sym = ORDER[_idx];
+        var min = System.getClockTime().min;
+        if ((sym == :overview || sym == :week) && min == _lastMin) { return; }
+        _lastMin = min;
+        WatchUi.requestUpdate();
+    }
 
     function _refresh() as Void {
         // Re-pull calculator from the app — settings changes (Asr, method,
@@ -414,15 +443,22 @@ class CardView extends WatchUi.View {
 
     // (Theme.accent already replaced via global edit.)
 
+    // Loaded once per sym — onUpdate runs every second on some cards.
     function _iconFor(sym) {
-        if (sym == :fajr)     { return WatchUi.loadResource(Rez.Drawables.IconFajr); }
-        if (sym == :sunrise)  { return WatchUi.loadResource(Rez.Drawables.IconSunrise); }
-        if (sym == :dhuhr)    { return WatchUi.loadResource(Rez.Drawables.IconDhuhr); }
-        if (sym == :asr)      { return WatchUi.loadResource(Rez.Drawables.IconAsr); }
-        if (sym == :maghrib)  { return WatchUi.loadResource(Rez.Drawables.IconMaghrib); }
-        if (sym == :isha)     { return WatchUi.loadResource(Rez.Drawables.IconIsha); }
-        if (sym == :tahajjud) { return WatchUi.loadResource(Rez.Drawables.IconTahajjud); }
-        return null;
+        var icon = _icons[sym];
+        if (icon != null) { return icon; }
+        var rez = null;
+        if (sym == :fajr)     { rez = Rez.Drawables.IconFajr; }
+        if (sym == :sunrise)  { rez = Rez.Drawables.IconSunrise; }
+        if (sym == :dhuhr)    { rez = Rez.Drawables.IconDhuhr; }
+        if (sym == :asr)      { rez = Rez.Drawables.IconAsr; }
+        if (sym == :maghrib)  { rez = Rez.Drawables.IconMaghrib; }
+        if (sym == :isha)     { rez = Rez.Drawables.IconIsha; }
+        if (sym == :tahajjud) { rez = Rez.Drawables.IconTahajjud; }
+        if (rez == null) { return null; }
+        icon = WatchUi.loadResource(rez);
+        _icons[sym] = icon;
+        return icon;
     }
 
     function _resolveCityLabel(loc) {
@@ -436,27 +472,6 @@ class CardView extends WatchUi.View {
             return "GPS";
         }
         return "";
-    }
-
-    function _normalizePrayerName(raw) {
-        // Strip leading colon from ":fajr"-style symbols.
-        if (raw.find(":") == 0) {
-            return raw.substring(1, raw.length());
-        }
-        // Map "symbol (NNN)" hash-form back to known names by comparing
-        // the toString of each known symbol once. Cheap.
-        var known = [:fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha];
-        for (var i = 0; i < known.size(); i++) {
-            if (known[i].toString().equals(raw)) {
-                if (known[i] == :fajr)    { return "Fajr"; }
-                if (known[i] == :sunrise) { return "Sunrise"; }
-                if (known[i] == :dhuhr)   { return "Dhuhr"; }
-                if (known[i] == :asr)     { return "Asr"; }
-                if (known[i] == :maghrib) { return "Maghrib"; }
-                if (known[i] == :isha)    { return "Isha"; }
-            }
-        }
-        return raw;
     }
 
     function _drawPagerDots(dc as Graphics.Dc) as Void {

@@ -108,7 +108,7 @@ class SettingsMenu extends WatchUi.Menu2 {
     }
 
     function _prealertSubLabel() as Lang.String {
-        var m = Settings.prealertMinutes();
+        var m = Settings.prealertOtherMinutes();
         if (m <= 0) { return WatchUi.loadResource(Rez.Strings.Off); }
         return m + " " + WatchUi.loadResource(Rez.Strings.MinutesShort);
     }
@@ -138,14 +138,16 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             var menu = new CityPickerMenu();
             WatchUi.pushView(menu, new CityPickerDelegate(_menu), WatchUi.SLIDE_LEFT);
         } else if (id == :prealert) {
-            // cycle 0 -> 5 -> 10 -> 15 -> 0
-            var cur = Settings.prealertMinutes();
+            // cycle 0 -> 5 -> 10 -> 15 -> 0, applied to all prayers;
+            // per-prayer fine-tuning lives in the Connect app settings.
+            var cur = Settings.prealertOtherMinutes();
             var next = 0;
             if (cur == 0)      { next = 5; }
             else if (cur == 5) { next = 10; }
             else if (cur == 10) { next = 15; }
             else                { next = 0; }
-            Application.Properties.setValue("prealertMin", next);
+            Application.Properties.setValue("prealertFajr", next);
+            Application.Properties.setValue("prealertOther", next);
             _applyAndRefresh();
         } else if (id == :method) {
             var menu = new MethodPickerMenu();

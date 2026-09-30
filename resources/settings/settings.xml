@@ -12,7 +12,6 @@
         <property id="offsetAsr"     type="number">0</property>
         <property id="offsetMaghrib" type="number">0</property>
         <property id="offsetIsha"    type="number">0</property>
-        <property id="prealertMin"   type="number">0</property>
         <!-- Language override: 0=auto, 1=kk, 2=ru, 3=en. -->
         <property id="langIdx"       type="number">0</property>
         <!-- Calculation method: index into Methods.IDS. 0 = ҚМДБ (default). -->
@@ -21,7 +20,7 @@
         <property id="notify"        type="boolean">true</property>
         <!-- Vibration pattern: 0=Standard (3 pulses), 1=Short (1), 2=Long (5), 3=Double. -->
         <property id="vibePattern"   type="number">0</property>
-        <!-- Pre-alert minutes for Fajr (was prealertMin, now per-prayer). -->
+        <!-- Pre-alert minutes for Fajr. The watch menu sets both pre-alerts at once. -->
         <property id="prealertFajr"  type="number">0</property>
         <!-- Pre-alert minutes for Dhuhr/Asr/Maghrib/Isha. -->
         <property id="prealertOther" type="number">0</property>
@@ -59,14 +58,6 @@
             </settingConfig>
         </setting>
 
-        <setting propertyKey="@Properties.prealertMin" title="@Strings.SettingPreAlert">
-            <settingConfig type="list">
-                <listEntry value="0">@Strings.Off</listEntry>
-                <listEntry value="5">5 @Strings.MinutesShort</listEntry>
-                <listEntry value="10">10 @Strings.MinutesShort</listEntry>
-                <listEntry value="15">15 @Strings.MinutesShort</listEntry>
-            </settingConfig>
-        </setting>
 
         <setting propertyKey="@Properties.offsetFajr" title="@Strings.OffsetFajr">
             <settingConfig type="numeric" min="-9" max="9"/>

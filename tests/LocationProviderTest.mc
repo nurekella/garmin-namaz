@@ -106,7 +106,7 @@ module LocationProviderTest {
     }
 
     (:test)
-    function testCacheMissWhenStale(logger) {
+    function testStaleCacheBeatsFallback(logger) {
         _resetStorage();
         var lp = new LocationProvider();
         var nowSec = Time.now().value();
@@ -120,11 +120,13 @@ module LocationProviderTest {
         };
         lp.saveLocation(stale);
         var loc = lp.getCurrentLocation();
-        if (loc[:source] == :gps) {
-            logger.error("expected fallback on stale cache, still :gps"); return false;
+        // No live GPS in the simulator: the stale fix must still win over
+        // the Almaty fallback (user in Astana shouldn't get Almaty times).
+        if (loc[:source] != :cached || loc[:lat] != 50.0d) {
+            logger.error("expected stale :cached, got " + loc[:source]); return false;
         }
-        if (loc[:source] != :fallback) {
-            logger.error("expected :fallback, got " + loc[:source]); return false;
+        if (loc[:tz] != lp.deviceTz()) {
+            logger.error("tz should follow the watch clock, got " + loc[:tz]); return false;
         }
         _resetStorage();
         return true;
