@@ -14,6 +14,7 @@ using Toybox.Lang;
 module FaceData {
 
     const STORAGE_KEY_ERR = "face_err";
+    const STORAGE_KEY_OK  = "face_ok";    // when the last publish went through
 
     function publish(calc, loc) {
         if (!(Toybox has :Complications)) { return; }
@@ -25,6 +26,7 @@ module FaceData {
                 :shortLabel => _short(next[:name])
             });
             Storage.remove(STORAGE_KEY_ERR);
+            Storage.set(STORAGE_KEY_OK, Time.now().value());
         } catch (e) {
             // Kept for debugging: the first thing to check when a face
             // slot stays empty.

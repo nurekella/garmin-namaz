@@ -144,15 +144,14 @@ module HijriDate {
 
     // 1..12 -> localised month name. Honours Settings.language() so the
     // manual language switch overrides system locale.
-    const _MONTHS_KK = ["Мұхаррам","Сафар","Рабиғ-уль-әууәл","Рабиғ-уль-ахир",
-        "Жұмад-уль-әууәл","Жұмад-уль-ахир","Ражаб","Шағбан","Рамазан",
-        "Шәууал","Зул-қағда","Зул-хижжа"];
-    const _MONTHS_RU = ["Мухаррам","Сафар","Раби-уль-авваль","Раби-уль-ахир",
-        "Джумада-аль-уля","Джумада-аль-ахира","Раджаб","Шаабан","Рамадан",
-        "Шавваль","Зуль-каада","Зуль-хиджа"];
-    const _MONTHS_EN = ["Muharram","Safar","Rabi al-Awwal","Rabi al-Thani",
-        "Jumada al-Awwal","Jumada al-Thani","Rajab","Shaban","Ramadan",
-        "Shawwal","Dhul-Qadah","Dhul-Hijjah"];
+    // Short on purpose: the date line sits low on a round screen, where a
+    // long month name ("Jumada al-Awwal") would be cut off at the bezel.
+    const _MONTHS_KK = ["Мұхаррам","Сафар","Рабиғ I","Рабиғ II","Жұмада I","Жұмада II",
+        "Ражаб","Шағбан","Рамазан","Шәууал","Зұлқағда","Зұлхижжа"];
+    const _MONTHS_RU = ["Мухаррам","Сафар","Раби I","Раби II","Джумада I","Джумада II",
+        "Раджаб","Шаабан","Рамадан","Шавваль","Зуль-када","Зуль-хиджа"];
+    const _MONTHS_EN = ["Muharram","Safar","Rabi I","Rabi II","Jumada I","Jumada II",
+        "Rajab","Shaban","Ramadan","Shawwal","Dhul-Qadah","Dhul-Hijjah"];
 
     function monthName(month) {
         if (month < 1 || month > 12) { return ""; }
