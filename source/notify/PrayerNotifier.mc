@@ -79,11 +79,16 @@ module PrayerNotifier {
         var loc = locationProvider.getCurrentLocation();
         if (loc == null) { return null; }
 
+        // Whatever happens below, the watch face should show the next prayer.
+        FaceData.publish(calc, loc);
+
         var target = _findNextNotifiable(calc, loc);
         if (target == null) { return null; }
 
         var title = PrayerNames.nameOf(target[:name]);
-        if (target[:name] == :dhuhr) {
+        if (target[:kind] == :end) {
+            title += " " + PrayerNames.endsWord();
+        } else if (target[:name] == :dhuhr) {
             // day_of_week: 1=Sunday..7=Saturday; Friday = 6.
             var info = Gregorian.info(new Time.Moment(target[:timestampSec]), Time.FORMAT_SHORT);
             if (info.day_of_week == 6) { title = PrayerNames.jumuah(); }
@@ -147,54 +152,70 @@ module PrayerNotifier {
         var nowH      = nowInfo.hour + nowInfo.min / 60.0d + nowInfo.sec / 3600.0d;
         var preFajr   = _prealertFor(:fajr);
         var preOther  = _prealertFor(:dhuhr);
+        var endWarn   = Settings.endWarnMinutes();
 
         var today = calc.calculate(loc[:lat], loc[:lon],
             nowInfo.year, nowInfo.month, nowInfo.day, loc[:tz]);
-        var pick = pickAlert(today, nowH, preFajr, preOther);
+        var pick = pickAlert(today, nowH, preFajr, preOther, endWarn);
 
         if (pick == null) {
             var tInfo = Gregorian.info(nowMoment.add(new Time.Duration(86400)), Time.FORMAT_SHORT);
             var tomorrow = calc.calculate(loc[:lat], loc[:lon],
                 tInfo.year, tInfo.month, tInfo.day, loc[:tz]);
             // Tomorrow's hours measured from today's clock: shift "now" back 24h.
-            pick = pickAlert(tomorrow, nowH - 24.0d, preFajr, preOther);
+            pick = pickAlert(tomorrow, nowH - 24.0d, preFajr, preOther, endWarn);
         }
         if (pick == null) { return null; }
         return {
             :name         => pick[:name],
+            :kind         => pick[:kind],
             :time         => pick[:time],
             :timestampSec => nowMoment.value() + pick[:deltaSec]
         };
     }
 
-    // Pure scheduling rule. Every obligatory prayer yields up to two alert
-    // points — the pre-alert (T - pre) and the prayer itself (T) — and we
-    // take the earliest one still ahead of `nowH`. An alert that falls
-    // inside the platform's 5-min floor is pushed to the floor instead of
-    // being dropped (a few minutes late beats a silent prayer).
-    // Returns { :name => Symbol, :time => prayer hours, :deltaSec => Number }
-    // or null.
-    function pickAlert(times, nowH, preFajr, preOther) {
+    // Pure scheduling rule. Every obligatory prayer yields up to three alert
+    // points: the pre-alert (T - pre), the prayer itself (T) and, for the
+    // two prayers you can actually miss, a warning before their time ends
+    // (Fajr -> sunrise, Asr -> maghrib; endWarn minutes before). We take
+    // the earliest one still ahead of nowH. An alert inside the platform
+    // 5-min floor is pushed to the floor instead of being dropped (a few
+    // minutes late beats a silent prayer); an end warning that the floor
+    // would push past the end itself is skipped.
+    // Returns { :name => Symbol, :kind => :start or :end, :time => hours
+    // shown in the title, :deltaSec => Number } or null.
+    function pickAlert(times, nowH, preFajr, preOther, endWarn) {
         var notifiable = [:fajr, :dhuhr, :asr, :maghrib, :isha];
-        var bestSym  = null;
-        var bestTime = null;
+        var bestSym   = null;
+        var bestKind  = null;
+        var bestTime  = null;
+        var bestShown = null;
+        var floorH = MIN_SCHEDULE_GAP_SEC / 3600.0d;
         for (var i = 0; i < notifiable.size(); i++) {
             var sym = notifiable[i];
             var t = times[sym];
             if (t == null) { continue; }
             var pre = (sym == :fajr) ? preFajr : preOther;
-            var points = [t - pre / 60.0d, t];
-            for (var j = 0; j < 2; j++) {
+            var points = [[t - pre / 60.0d, :start, t], [t, :start, t]];
+            if (endWarn > 0) {
+                var e = (sym == :fajr) ? times[:sunrise] : ((sym == :asr) ? times[:maghrib] : null);
+                if (e != null) { points.add([e - endWarn / 60.0d, :end, e]); }
+            }
+            for (var j = 0; j < points.size(); j++) {
                 var p = points[j];
-                if (p > nowH && (bestTime == null || p < bestTime)) {
-                    bestTime = p;
-                    bestSym  = sym;
+                if (p[0] <= nowH) { continue; }
+                if (p[1] == :end && nowH + floorH >= p[2]) { continue; }
+                if (bestTime == null || p[0] < bestTime) {
+                    bestTime  = p[0];
+                    bestSym   = sym;
+                    bestKind  = p[1];
+                    bestShown = p[2];
                 }
             }
         }
         if (bestSym == null) { return null; }
         var deltaSec = ((bestTime - nowH) * 3600.0d).toNumber();
         if (deltaSec < MIN_SCHEDULE_GAP_SEC) { deltaSec = MIN_SCHEDULE_GAP_SEC; }
-        return { :name => bestSym, :time => times[bestSym], :deltaSec => deltaSec };
+        return { :name => bestSym, :kind => bestKind, :time => bestShown, :deltaSec => deltaSec };
     }
 }

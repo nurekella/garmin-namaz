@@ -241,19 +241,19 @@ module PrayerCalculatorTest {
 
     (:test)
     function testHighLatitude_Reykjavik_June(logger) {
-        // 64.13°N around summer solstice — sun does not descend to 18° below horizon,
-        // so Fajr/Isha return null and we test that gracefully.
+        // 64.13°N around the summer solstice the sun never gets 15° below the
+        // horizon. The night-fraction rule still gives Fajr/Isha (symmetric
+        // around the short night) instead of null.
         var calc = _newDumkHanafi();
         var t = calc.calculate(64.1466d, -21.9426d, 2026, 6, 21, 0);
-        if (t[:fajr] != null) {
-            logger.error("Reykjavik June 21: Fajr should be null (no twilight), got " + _hhmm(t[:fajr]));
+        if (t[:fajr] == null || t[:isha] == null) {
+            logger.error("Reykjavik June 21: Fajr/Isha should fall back to the night fraction");
             return false;
         }
-        if (t[:isha] != null) {
-            logger.error("Reykjavik June 21: Isha should be null, got " + _hhmm(t[:isha]));
+        if (!(t[:fajr] < t[:sunrise]) || !(t[:isha] > t[:maghrib])) {
+            logger.error("Reykjavik June 21: Fajr must precede Sunrise and Isha follow Maghrib");
             return false;
         }
-        // Dhuhr and sunrise/maghrib still computable
         if (t[:dhuhr] == null || t[:sunrise] == null || t[:maghrib] == null || t[:asr] == null) {
             logger.error("Reykjavik June 21: Dhuhr/Sunrise/Maghrib/Asr should be defined");
             return false;
@@ -352,6 +352,37 @@ module PrayerCalculatorTest {
             logger.error("secondsUntil dhuhr should be ~1800, got " + n4[:secondsUntil]);
             return false;
         }
+        return true;
+    }
+
+    // The window of the running prayer, on a fixed day: Almaty 2026-04-29.
+    function _momentAt(h, m) {
+        // local civil time today -> Moment
+        return Toybox.Time.today().add(new Toybox.Time.Duration(h * 3600 + m * 60));
+    }
+
+    (:test)
+    function testCurrentWindow(logger) {
+        var calc = _newDumkHanafi();
+        var loc = { :lat => 43.2389d, :lon => 76.8897d, :tz => new LocationProvider().deviceTz() };
+        var d = Toybox.Time.Gregorian.info(Toybox.Time.now(), Toybox.Time.FORMAT_SHORT);
+        var t = calc.calculate(43.2389d, 76.8897d, d.year, d.month, d.day, loc[:tz]);
+
+        // Midway between Dhuhr and Asr: Dhuhr runs, ends at Asr.
+        var mid = (t[:dhuhr] + t[:asr]) / 2.0d;
+        var w = calc.currentWindow(loc, _momentAt(mid.toNumber(), ((mid - mid.toNumber()) * 60.0d).toNumber()));
+        if (w == null || w[:name] != :dhuhr) { logger.error("midday should be Dhuhr, got " + w); return false; }
+        if (w[:secondsLeft] < 3600 || w[:secondsLeft] > 3 * 3600 + 3600) { logger.error("odd secondsLeft " + w[:secondsLeft]); return false; }
+
+        // Between sunrise and Dhuhr no prayer is running.
+        var gap = (t[:sunrise] + t[:dhuhr]) / 2.0d;
+        w = calc.currentWindow(loc, _momentAt(gap.toNumber(), ((gap - gap.toNumber()) * 60.0d).toNumber()));
+        if (w != null) { logger.error("between sunrise and Dhuhr there must be no window, got " + w[:name]); return false; }
+
+        // 01:00 still belongs to yesterday's Isha, which ends at today's Fajr.
+        w = calc.currentWindow(loc, _momentAt(1, 0));
+        if (w == null || w[:name] != :isha) { logger.error("01:00 should be Isha"); return false; }
+        if (w[:secondsLeft] < 3600) { logger.error("Isha at 01:00 should have hours left"); return false; }
         return true;
     }
 }

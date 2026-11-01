@@ -27,6 +27,7 @@ class LocationProvider {
 
     static const KEY_LAST_LOCATION = "last_location";
     static const KEY_MANUAL_CITY   = "manual_city";
+    static const KEY_MANUAL_POINT  = "manual_point";   // {idx, lat, lon} for places outside the big 16
     static const DEFAULT_TTL_SEC   = 86400;   // 24 hours
 
     var _gpsActive;
@@ -42,6 +43,16 @@ class LocationProvider {
     function getCurrentLocation() {
         var manualId = Storage.get(KEY_MANUAL_CITY);
         if (manualId != null) {
+            var pt = Storage.get(KEY_MANUAL_POINT);
+            if (pt != null) {
+                return {
+                    :lat    => pt["lat"],
+                    :lon    => pt["lon"],
+                    :tz     => deviceTz(),
+                    :cityId => manualId,
+                    :source => :manual
+                };
+            }
             var c = Cities.byId(manualId);
             if (c != null) {
                 return _fromCity(c, :manual);
@@ -158,11 +169,30 @@ class LocationProvider {
         };
     }
 
+    // One of the big 16 (Cities.all()) by id, or null for automatic.
     function setManualCity(cityId) {
+        Storage.remove(KEY_MANUAL_POINT);
         if (cityId == null) {
             Storage.remove(KEY_MANUAL_CITY);
         } else {
             Storage.set(KEY_MANUAL_CITY, cityId);
+        }
+    }
+
+    // Any other place, picked by its index in the city list. The
+    // coordinates are stored with it so the background process never has
+    // to load the big city table (see CityIndex).
+    function setManualPoint(idx, cityId, lat, lon) {
+        Storage.set(KEY_MANUAL_CITY, cityId);
+        Storage.set(KEY_MANUAL_POINT, { "idx" => idx, "lat" => lat, "lon" => lon });
+    }
+
+    // Background-safe: keep a stored point only if it was saved for this
+    // picker index (a phone-side change of city invalidates it).
+    function keepManualPoint(idx) {
+        var pt = Storage.get(KEY_MANUAL_POINT);
+        if (pt == null || pt["idx"] != idx) {
+            setManualCity(null);
         }
     }
 

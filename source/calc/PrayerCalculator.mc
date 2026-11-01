@@ -7,13 +7,19 @@ using Toybox.Time.Gregorian;
 // location and method. Times are returned in fractional local hours
 // (e.g. 13.5 = 13:30); convert to Time.Moment at the UI layer.
 //
-// Method-level calibration offsets live in params[:offsets].
-// User-tuned per-prayer offsets (from settings) come in via the `offsets`
-// constructor argument and stack on top.
+// Method parameters (see DumkMethod):
+//   :fajrAngle / :ishaAngle   sun depression for Fajr / Isha
+//   :ishaSymmetric            Isha = Maghrib + (Sunrise - Fajr), as ҚМДБ does
+//   :nightCap                 Fajr/Isha never start farther from Sunrise/
+//                             Maghrib than this fraction of the night.
+//                             Without it the cap angle/60 only replaces a
+//                             Fajr/Isha the sun never reaches (high
+//                             latitudes in summer), so no entry is null.
+//   :offsets                  minutes added to sunrise/dhuhr/asr/maghrib
+//   :highLat + :offsetsHigh   a different set of offsets from that latitude
 //
-// At very high latitudes (typically > 48° in winter / > 60° in summer)
-// the sun may not reach the Fajr/Isha angles; in that case the entry is
-// `null`. A high-latitude correction layer can be added later (v1.1).
+// User-tuned per-prayer offsets (from settings) come in via the `offsets`
+// constructor argument and stack on top of the final times.
 (:glance, :background)
 class PrayerCalculator {
 
@@ -40,43 +46,68 @@ class PrayerCalculator {
                       + tzOffset.toDouble()
                       - eqt / 60.0d;
 
-        var fajrAngle    = _params[:fajrAngle].toDouble();
-        var sunriseAngle = _angleOrDefault(:sunriseAngle, 0.833d);
-
-        var hSun  = SolarMath.hourAngle(latitude, decl, sunriseAngle);
-        var hFajr = SolarMath.hourAngle(latitude, decl, fajrAngle);
+        var mo = _methodOffsets(latitude);
+        var hSun = SolarMath.hourAngle(latitude, decl, _angleOrDefault(:sunriseAngle, 0.833d));
 
         // Asr: sun at altitude `asrAlt` above horizon; pass -asrAlt to hourAngle.
         var asrAlt = SolarMath.asrAngle(latitude, decl, _asrFactor);
         var hAsr   = SolarMath.hourAngle(latitude, decl, -asrAlt);
 
-        var fajr    = (hFajr != null) ? solarNoon - hFajr : null;
-        var sunrise = (hSun  != null) ? solarNoon - hSun  : null;
-        var dhuhr   = solarNoon;
-        var asr     = (hAsr  != null) ? solarNoon + hAsr  : null;
-        var maghrib = (hSun  != null) ? solarNoon + hSun  : null;
+        var sunrise = (hSun != null) ? solarNoon - hSun + _off(mo, :sunrise) : null;
+        var maghrib = (hSun != null) ? solarNoon + hSun + _off(mo, :maghrib) : null;
+        var dhuhr   = solarNoon + _off(mo, :dhuhr);
+        var asr     = (hAsr != null) ? solarNoon + hAsr + _off(mo, :asr) : null;
 
-        // Isha — angle-based by default, but methods like Umm al-Qura use a
-        // fixed interval after Maghrib. params[:ishaIntervalMin] takes
-        // precedence over params[:ishaAngle] when present.
+        // Fajr / Isha. `night` runs Maghrib -> next Sunrise (today's length
+        // is a fine stand-in for the next night).
+        var night = (sunrise != null && maghrib != null) ? (24.0d - maghrib) + sunrise : null;
+        var fajrAngle = _params[:fajrAngle].toDouble();
+        var fajrGap = _twilightGap(
+            SolarMath.hourAngle(latitude, decl, fajrAngle), solarNoon, sunrise, true,
+            night, fajrAngle);
+
+        var fajr = (fajrGap != null) ? sunrise - fajrGap : null;
+
+        // Isha — symmetric to Fajr, fixed interval after Maghrib (Umm al-Qura),
+        // or its own angle. :ishaIntervalMin wins over :ishaAngle.
         var isha = null;
         var intervalMin = _params[:ishaIntervalMin];
-        if (intervalMin != null && maghrib != null) {
-            isha = maghrib + intervalMin.toDouble() / 60.0d;
-        } else if (_params[:ishaAngle] != null) {
-            var hIsha = SolarMath.hourAngle(latitude, decl, _params[:ishaAngle].toDouble());
-            isha = (hIsha != null) ? solarNoon + hIsha : null;
+        if (maghrib != null) {
+            if (intervalMin != null) {
+                isha = maghrib + intervalMin.toDouble() / 60.0d;
+            } else if (_params[:ishaSymmetric] == true) {
+                if (fajrGap != null) { isha = maghrib + fajrGap; }
+            } else if (_params[:ishaAngle] != null) {
+                var ishaAngle = _params[:ishaAngle].toDouble();
+                var ishaGap = _twilightGap(
+                    SolarMath.hourAngle(latitude, decl, ishaAngle), solarNoon, maghrib, false,
+                    night, ishaAngle);
+                if (ishaGap != null) { isha = maghrib + ishaGap; }
+            }
         }
 
         return {
-            :fajr      => _withOffsets(fajr,    :fajr),
-            :sunrise   => _withOffsets(sunrise, :sunrise),
-            :dhuhr     => _withOffsets(dhuhr,   :dhuhr),
-            :asr       => _withOffsets(asr,     :asr),
-            :maghrib   => _withOffsets(maghrib, :maghrib),
-            :isha      => _withOffsets(isha,    :isha),
+            :fajr      => _withUser(fajr    != null ? fajr + _off(mo, :fajr) : null, :fajr),
+            :sunrise   => _withUser(sunrise, :sunrise),
+            :dhuhr     => _withUser(dhuhr,   :dhuhr),
+            :asr       => _withUser(asr,     :asr),
+            :maghrib   => _withUser(maghrib, :maghrib),
+            :isha      => _withUser(isha != null ? isha + _off(mo, :isha) : null, :isha),
             :solarNoon => solarNoon
         };
+    }
+
+    // Hours between the twilight event and Sunrise (Fajr) / Maghrib (Isha),
+    // after the night-fraction rule. null when there is no usable night.
+    function _twilightGap(hAngle, solarNoon, edge, before, night, angle) {
+        if (edge == null || night == null) { return null; }
+        var capFrac = _params[:nightCap];
+        var always = (capFrac != null);
+        if (!always) { capFrac = angle / 60.0d; }
+        var cap = capFrac.toDouble() * night;
+        if (hAngle == null) { return cap; }            // sun never gets that low
+        var gap = before ? edge - (solarNoon - hAngle) : (solarNoon + hAngle) - edge;
+        return (always && gap > cap) ? cap : gap;
     }
 
     // Returns the next prayer entry strictly after `currentHourLocal`.
@@ -119,22 +150,69 @@ class PrayerCalculator {
         };
     }
 
+    // The prayer whose time is running now and when it ends:
+    //   Fajr -> Sunrise, Dhuhr -> Asr, Asr -> Maghrib, Maghrib -> Isha,
+    //   Isha -> Fajr (the Hanafi limit; it also covers the small hours
+    //   before Fajr, which still belong to yesterday's Isha).
+    // Between Sunrise and Dhuhr no prayer is running -> null.
+    // Result: { :name => Symbol, :until => Float (hours, may be > 24 or < 0
+    // relative to the day), :secondsLeft => Number }.
+    function currentWindow(loc, nowMoment) {
+        var info = Gregorian.info(nowMoment, Time.FORMAT_SHORT);
+        var nowH = info.hour + info.min / 60.0d + info.sec / 3600.0d;
+        var t = calculate(loc[:lat], loc[:lon], info.year, info.month, info.day, loc[:tz]);
+
+        var starts = [:fajr, :dhuhr, :asr, :maghrib];
+        var ends   = [:sunrise, :asr, :maghrib, :isha];
+        for (var i = 0; i < starts.size(); i++) {
+            var s = t[starts[i]];
+            var e = t[ends[i]];
+            if (s != null && e != null && nowH >= s && nowH < e) {
+                return _window(starts[i], e, nowH);
+            }
+        }
+        if (t[:fajr] != null && nowH < t[:fajr]) {
+            return _window(:isha, t[:fajr], nowH);
+        }
+        if (t[:isha] != null && nowH >= t[:isha]) {
+            var d = Gregorian.info(nowMoment.add(new Time.Duration(86400)), Time.FORMAT_SHORT);
+            var f = calculate(loc[:lat], loc[:lon], d.year, d.month, d.day, loc[:tz])[:fajr];
+            if (f != null) { return _window(:isha, f + 24.0d, nowH); }
+        }
+        return null;
+    }
+
+    function _window(name, untilH, nowH) {
+        return {
+            :name        => name,
+            :until       => untilH,
+            :secondsLeft => ((untilH - nowH) * 3600.0d).toNumber()
+        };
+    }
+
     function _angleOrDefault(key, fallback) {
         var v = _params[key];
         return (v != null) ? v.toDouble() : fallback;
     }
 
-    function _withOffsets(time, key) {
+    // Offsets in effect at this latitude: :offsetsHigh from :highLat north.
+    function _methodOffsets(latitude) {
+        var high = _params[:highLat];
+        if (high != null && latitude >= high.toDouble() && _params[:offsetsHigh] != null) {
+            return _params[:offsetsHigh];
+        }
+        return _params[:offsets];
+    }
+
+    // Method offset for one prayer, in hours.
+    function _off(offsets, key) {
+        if (offsets == null || offsets[key] == null) { return 0.0d; }
+        return offsets[key].toDouble() / 60.0d;
+    }
+
+    function _withUser(time, key) {
         if (time == null) { return null; }
-        var total = 0;
-        var methodOffsets = _params[:offsets];
-        if (methodOffsets != null && methodOffsets[key] != null) {
-            total += methodOffsets[key].toNumber();
-        }
-        if (_userOffsets != null && _userOffsets[key] != null) {
-            total += _userOffsets[key].toNumber();
-        }
-        if (total == 0) { return time; }
-        return time + total.toDouble() / 60.0d;
+        if (_userOffsets == null || _userOffsets[key] == null) { return time; }
+        return time + _userOffsets[key].toNumber().toDouble() / 60.0d;
     }
 }

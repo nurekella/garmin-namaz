@@ -42,9 +42,13 @@ module PrayerNotifierTest {
     }
 
     function _pick(nowH, preFajr, preOther) {
+        return _pickEnd(nowH, preFajr, preOther, 0);
+    }
+
+    function _pickEnd(nowH, preFajr, preOther, endWarn) {
         var t = { :fajr => 5.0d, :sunrise => 6.5d, :dhuhr => 13.0d,
                   :asr => 17.0d, :maghrib => 20.0d, :isha => 21.5d };
-        return PrayerNotifier.pickAlert(t, nowH, preFajr, preOther);
+        return PrayerNotifier.pickAlert(t, nowH, preFajr, preOther, endWarn);
     }
 
     (:test)
@@ -82,6 +86,48 @@ module PrayerNotifierTest {
         r = _pick(22.0d - 24.0d, 0, 0);
         Test.assertEqual(r[:name], :fajr);
         Test.assert(_near(r[:deltaSec], 7 * 3600));
+        return true;
+    }
+
+    // Fixture: Fajr 05:00 -> sunrise 06:30, Asr 17:00 -> Maghrib 20:00.
+    (:test)
+    function testEndWarningBeforeSunrise(logger) {
+        // 20 min before sunrise = 06:10; ahead of Dhuhr (13:00).
+        var r = _pickEnd(5.5d, 0, 0, 20);
+        Test.assertEqual(r[:kind], :end);
+        Test.assertEqual(r[:name], :fajr);
+        Test.assert(r[:time] == 6.5d);                      // title shows when it ends
+        Test.assert(_near(r[:deltaSec], 40 * 60));          // 05:30 -> 06:10
+
+        // Before Fajr itself the start alert (05:00) comes first.
+        r = _pickEnd(4.0d, 0, 0, 20);
+        Test.assertEqual(r[:kind], :start);
+        Test.assert(_near(r[:deltaSec], 3600));
+        return true;
+    }
+
+    (:test)
+    function testEndWarningAsrAndOff(logger) {
+        // After Dhuhr, 40 min before Asr's end warning (19:40).
+        var r = _pickEnd(17.5d, 0, 0, 20);
+        Test.assertEqual(r[:kind], :end);
+        Test.assertEqual(r[:name], :asr);
+        Test.assert(r[:time] == 20.0d);
+
+        // Off: the next thing is Maghrib itself, never an end warning.
+        r = _pickEnd(17.5d, 0, 0, 0);
+        Test.assertEqual(r[:kind], :start);
+        Test.assertEqual(r[:name], :maghrib);
+        return true;
+    }
+
+    (:test)
+    function testEndWarningSkippedWhenTooLate(logger) {
+        // 2 min before sunrise: the 5-min platform floor would fire the
+        // warning after sunrise, so skip it and go on to Dhuhr.
+        var r = _pickEnd(6.5d - 2.0d / 60.0d, 0, 0, 20);
+        Test.assertEqual(r[:name], :dhuhr);
+        Test.assertEqual(r[:kind], :start);
         return true;
     }
 }

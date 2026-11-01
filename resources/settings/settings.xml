@@ -4,7 +4,7 @@
 
     <properties>
         <property id="asrFactor" type="number">2</property>
-        <!-- City index into Cities.KAZAKHSTAN (0..15). -1 = auto (GPS + cache + Almaty fallback). -->
+        <!-- City index: 0..15 the big cities (Cities.mc), 16.. the rest (CityIndex.mc). -1 = auto (GPS + cache + Almaty fallback). -->
         <property id="manualCityIdx" type="number">-1</property>
         <property id="offsetFajr"    type="number">0</property>
         <property id="offsetSunrise" type="number">0</property>
@@ -22,7 +22,13 @@
         <property id="prealertFajr"  type="number">0</property>
         <!-- Pre-alert minutes for Dhuhr/Asr/Maghrib/Isha. -->
         <property id="prealertOther" type="number">0</property>
-        <!-- Colour theme: 0=Bronze (default), 1=Mint, 2=Sky, 3=Mono. -->
+        <!-- Warn this many minutes before Fajr (sunrise) and Asr (sunset) time runs out; 0 = off. -->
+        <property id="endWarn"       type="number">0</property>
+        <!-- Ramadan mode: 0 = automatic in the month of Ramadan, 1 = never. -->
+        <property id="ramadanMode"   type="number">0</property>
+        <!-- Hijri date shift in days (-2..+2): ҚМДБ announces month starts by moon sighting. -->
+        <property id="hijriAdjust"   type="number">0</property>
+        <!-- Colour theme: 0=Bronze (default), 1=Mint, 2=Sky. -->
         <property id="themeIdx"      type="number">0</property>
     </properties>
 
@@ -53,6 +59,79 @@
                 <listEntry value="13">Petropavl</listEntry>
                 <listEntry value="14">Aktau</listEntry>
                 <listEntry value="15">Turkestan</listEntry>
+                <listEntry value="16">Abay</listEntry>
+                <listEntry value="17">Aqkol</listEntry>
+                <listEntry value="18">Aqsay</listEntry>
+                <listEntry value="19">Aqsu</listEntry>
+                <listEntry value="20">Alatau</listEntry>
+                <listEntry value="21">Algha</listEntry>
+                <listEntry value="22">Altay</listEntry>
+                <listEntry value="23">Aral</listEntry>
+                <listEntry value="24">Arqalyq</listEntry>
+                <listEntry value="25">Arys</listEntry>
+                <listEntry value="26">Atbasar</listEntry>
+                <listEntry value="27">Ayagoz</listEntry>
+                <listEntry value="28">Balqash</listEntry>
+                <listEntry value="29">Bulaev</listEntry>
+                <listEntry value="30">Derzhavinsk</listEntry>
+                <listEntry value="31">Ekibastuz</listEntry>
+                <listEntry value="32">Embi</listEntry>
+                <listEntry value="33">Ereymentau</listEntry>
+                <listEntry value="34">Esik</listEntry>
+                <listEntry value="35">Esil</listEntry>
+                <listEntry value="36">Zhanaozen</listEntry>
+                <listEntry value="37">Zhanatas</listEntry>
+                <listEntry value="38">Zharkent</listEntry>
+                <listEntry value="39">Zhezqazghan</listEntry>
+                <listEntry value="40">Zhem</listEntry>
+                <listEntry value="41">Zhetisay</listEntry>
+                <listEntry value="42">Zhitiqara</listEntry>
+                <listEntry value="43">Zaysan</listEntry>
+                <listEntry value="44">Kentau</listEntry>
+                <listEntry value="45">Kokshetau</listEntry>
+                <listEntry value="46">Kurchatov</listEntry>
+                <listEntry value="47">Qazaly</listEntry>
+                <listEntry value="48">Qandyaghash</listEntry>
+                <listEntry value="49">Qarazhal</listEntry>
+                <listEntry value="50">Qaratau</listEntry>
+                <listEntry value="51">Qarqaraly</listEntry>
+                <listEntry value="52">Qaskelen</listEntry>
+                <listEntry value="53">Qonaev</listEntry>
+                <listEntry value="54">Qosshy</listEntry>
+                <listEntry value="55">Qulsary</listEntry>
+                <listEntry value="56">Lenger</listEntry>
+                <listEntry value="57">Lisakov</listEntry>
+                <listEntry value="58">Makinsk</listEntry>
+                <listEntry value="59">Mamlyut</listEntry>
+                <listEntry value="60">Priozyorsk</listEntry>
+                <listEntry value="61">Ridder</listEntry>
+                <listEntry value="62">Rudnyy</listEntry>
+                <listEntry value="63">Saran</listEntry>
+                <listEntry value="64">Sarqan</listEntry>
+                <listEntry value="65">Saryaghash</listEntry>
+                <listEntry value="66">Satpaev</listEntry>
+                <listEntry value="67">Sergeev</listEntry>
+                <listEntry value="68">Serebryansk</listEntry>
+                <listEntry value="69">Stepnogorsk</listEntry>
+                <listEntry value="70">Stepnyak</listEntry>
+                <listEntry value="71">Tayynsha</listEntry>
+                <listEntry value="72">Talghar</listEntry>
+                <listEntry value="73">Taldyqorghan</listEntry>
+                <listEntry value="74">Tekeli</listEntry>
+                <listEntry value="75">Temir</listEntry>
+                <listEntry value="76">Temirtau</listEntry>
+                <listEntry value="77">Tobyl</listEntry>
+                <listEntry value="78">Usharal</listEntry>
+                <listEntry value="79">Ushtobe</listEntry>
+                <listEntry value="80">Fort-Shevchenko</listEntry>
+                <listEntry value="81">Khromtau</listEntry>
+                <listEntry value="82">Shalqar</listEntry>
+                <listEntry value="83">Shar</listEntry>
+                <listEntry value="84">Shardara</listEntry>
+                <listEntry value="85">Shakhtinsk</listEntry>
+                <listEntry value="86">Shemonaikha</listEntry>
+                <listEntry value="87">Shu</listEntry>
+                <listEntry value="88">Shchuchinsk</listEntry>
             </settingConfig>
         </setting>
 
@@ -108,8 +187,20 @@
                 <listEntry value="0">Bronze</listEntry>
                 <listEntry value="1">Mint</listEntry>
                 <listEntry value="2">Sky</listEntry>
-                <listEntry value="3">Mono</listEntry>
             </settingConfig>
+        </setting>
+
+        <setting propertyKey="@Properties.endWarn" title="Warn before Fajr / Asr time ends (min, 0 = off)">
+            <settingConfig type="numeric" min="0" max="60"/>
+        </setting>
+        <setting propertyKey="@Properties.ramadanMode" title="Ramadan mode">
+            <settingConfig type="list">
+                <listEntry value="0">Automatic</listEntry>
+                <listEntry value="1">Off</listEntry>
+            </settingConfig>
+        </setting>
+        <setting propertyKey="@Properties.hijriAdjust" title="Hijri date adjustment (days)">
+            <settingConfig type="numeric" min="-2" max="2"/>
         </setting>
 
         <setting propertyKey="@Properties.prealertFajr" title="Pre-alert Fajr (min)">

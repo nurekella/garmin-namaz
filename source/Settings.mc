@@ -15,7 +15,7 @@ module Settings {
     // Hardcoded mirror of manifest.xml version="..." — Connect IQ doesn't
     // expose manifest values at runtime, so the on-watch settings menu
     // shows this constant. Bump in lockstep with the manifest.
-    const VERSION = "1.7.0";
+    const VERSION = "1.8.0";
 
     // "kk" / "ru" / "en" — falls back to the system Rez locale when user
     // chose "auto" or never opened settings.
@@ -45,16 +45,30 @@ module Settings {
         return (idx < 0 || idx > 3) ? 0 : idx;
     }
 
-    // Index into Cities.all(), or -1 = auto (GPS / cache / fallback).
+    // Pickable places: the big 16 in Cities.all(), then CityIndex.DATA.
+    // Mirrors CityIndex.count() (asserted in a test) because the background
+    // process must not load the big table.
+    const CITY_COUNT = 89;
+
+    // Index into the city list, or -1 = auto (GPS / cache / fallback).
     function manualCityIdx() {
         var idx = intProp("manualCityIdx");
         if (Application.Properties.getValue("manualCityIdx") == null) { idx = -1; }
-        return (idx < 0 || idx >= Cities.all().size()) ? -1 : idx;
+        return (idx < 0 || idx >= CITY_COUNT) ? -1 : idx;
     }
 
-    function manualCityId() {
+    // Background-safe: the big 16 resolve through Cities; any other place
+    // is only kept if the foreground stored its coordinates (CityIndex.sync).
+    function applyToLocator(locator) {
         var idx = manualCityIdx();
-        return (idx < 0) ? null : Cities.all()[idx][:id];
+        var big = Cities.all();
+        if (idx < 0) {
+            locator.setManualCity(null);
+        } else if (idx < big.size()) {
+            locator.setManualCity(big[idx][:id]);
+        } else {
+            locator.keepManualPoint(idx);
+        }
     }
 
     function prealertFajrMinutes() {
@@ -65,11 +79,30 @@ module Settings {
         return intProp("prealertOther");
     }
 
+    // Minutes before the time of Fajr (sunrise) and Asr (sunset) runs out
+    // at which to warn; 0 = off.
+    function endWarnMinutes() {
+        return intProp("endWarn");
+    }
+
+    // 0 = Ramadan mode switches on by itself in the Hijri month Ramadan,
+    // 1 = never.
+    function ramadanMode() {
+        return intProp("ramadanMode") == 1 ? 1 : 0;
+    }
+
+    // Days to shift the Hijri date (-2..+2): ҚМДБ announces the month
+    // start by moon sighting, so it can differ from Umm al-Qura by a day.
+    function hijriAdjust() {
+        var v = intProp("hijriAdjust");
+        return (v < -2) ? -2 : ((v > 2) ? 2 : v);
+    }
+
     function themeIdx() {
         var v = Application.Properties.getValue("themeIdx");
         if (v == null) { return 0; }
         var idx = v.toNumber();
-        if (idx < 0 || idx > 3) { return 0; }
+        if (idx < 0 || idx > 2) { return 0; }
         return idx;
     }
 
@@ -107,12 +140,6 @@ module Settings {
             asrFactor(),
             userOffsets()
         );
-    }
-
-    // Pushes the manual-city pref into the locator. Empty / null -> auto.
-    function applyToLocator(locator) {
-        var id = manualCityId();
-        locator.setManualCity(id);  // setManualCity(null) clears
     }
 
     function intProp(key) {

@@ -2,17 +2,19 @@ using Toybox.WatchUi;
 using Toybox.Application;
 using Toybox.Lang;
 
-// On-watch settings menu (MENU / long-press UP). Labels come from
-// PrayerNames.pick so they follow the in-app language override; each
-// item is addressed by id, so refresh() can relabel everything after a
-// change (including a language switch).
+// On-watch settings menu (MENU / long-press UP). Everything that exists in
+// the Garmin Connect phone app is also here: plenty of people never open
+// the phone app. Labels come from PrayerNames.pick so they follow the
+// in-app language override; each item is addressed by id, so refresh() can
+// relabel everything after a change (including a language switch).
 //
 // Settings are written to Application.Properties; the app re-applies via
 // onSettingsChanged().
 class SettingsMenu extends WatchUi.Menu2 {
 
-    static const ITEMS = [:qibla, :city, :method, :asr, :notify, :prealert,
-                          :testNotify, :offsets, :lang, :theme, :version];
+    static const ITEMS = [:city, :method, :asr, :notify, :prealert, :endWarn,
+                          :ramadan, :hijri, :testNotify, :offsets, :lang,
+                          :theme, :version];
 
     var _testSub = null;   // sub-label shown after "Test notification"
 
@@ -44,12 +46,14 @@ class SettingsMenu extends WatchUi.Menu2 {
 
     function _label(id) {
         var p = PrayerNames;
-        if (id == :qibla)      { return p.pick("Құбыла", "Кибла", "Qibla"); }
         if (id == :city)       { return p.pick("Қала", "Город", "City"); }
         if (id == :method)     { return p.pick("Әдіс", "Метод", "Method"); }
         if (id == :asr)        { return p.nameOf(:asr); }
         if (id == :notify)     { return p.pick("Хабарламалар", "Уведомления", "Notifications"); }
         if (id == :prealert)   { return p.pick("Алдын ала", "Заранее", "Pre-alert"); }
+        if (id == :endWarn)    { return p.pick("Уақыт аяқталуы", "Конец времени", "Time ending"); }
+        if (id == :ramadan)    { return p.pick("Рамазан режимі", "Режим Рамадана", "Ramadan mode"); }
+        if (id == :hijri)      { return p.pick("Хижра түзетуі", "Поправка хиджры", "Hijri adjust"); }
         if (id == :testNotify) { return p.pick("Хабарламаны тексеру", "Проверить уведомление", "Test notification"); }
         if (id == :offsets)    { return p.pick("Түзетулер", "Поправки", "Offsets"); }
         if (id == :lang)       { return p.pick("Тіл", "Язык", "Language"); }
@@ -61,8 +65,8 @@ class SettingsMenu extends WatchUi.Menu2 {
         var p = PrayerNames;
         if (id == :city) {
             var idx = Settings.manualCityIdx();
-            if (idx < 0) { return autoCityLabel(); }
-            return Cities.localizedName(Cities.all()[idx], Settings.language());
+            if (idx < 0) { return autoLabel() + " (GPS)"; }
+            return Cities.localizedName(CityIndex.at(idx), Settings.language());
         }
         if (id == :method) {
             var v = Application.Properties.getValue("methodIdx");
@@ -72,9 +76,12 @@ class SettingsMenu extends WatchUi.Menu2 {
         }
         if (id == :asr)      { return asrLabel(Settings.asrFactor()); }
         if (id == :notify)   { return Settings.notificationsEnabled() ? p.pick("Қосулы", "Вкл", "On") : offLabel(); }
-        if (id == :prealert) {
-            var m = Settings.prealertOtherMinutes();
-            return (m <= 0) ? offLabel() : m + " " + p.pick("мин", "мин", "min");
+        if (id == :prealert) { return minutesLabel(Settings.prealertOtherMinutes()); }
+        if (id == :endWarn)  { return minutesLabel(Settings.endWarnMinutes()); }
+        if (id == :ramadan)  { return (Settings.ramadanMode() == 0) ? autoLabel() : offLabel(); }
+        if (id == :hijri) {
+            var a = Settings.hijriAdjust();
+            return (a > 0) ? "+" + a : "" + a;
         }
         if (id == :testNotify) { return _testSub; }
         if (id == :lang)     { return LangPickerMenu.ENTRIES[Settings.langIdx()]; }
@@ -87,8 +94,13 @@ class SettingsMenu extends WatchUi.Menu2 {
         return PrayerNames.pick("Өшірулі", "Выкл", "Off");
     }
 
-    static function autoCityLabel() {
-        return PrayerNames.pick("Авто (GPS)", "Авто (GPS)", "Auto (GPS)");
+    static function autoLabel() {
+        return PrayerNames.pick("Авто", "Авто", "Auto");
+    }
+
+    // 0 -> "Off", 15 -> "15 min".
+    static function minutesLabel(m) {
+        return (m <= 0) ? offLabel() : m + " " + PrayerNames.pick("мин", "мин", "min");
     }
 
     static function asrLabel(factor) {
@@ -108,9 +120,7 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
 
     function onSelect(item) as Void {
         var id = item.getId();
-        if (id == :qibla) {
-            WatchUi.pushView(new QiblaView(), new QiblaDelegate(), WatchUi.SLIDE_LEFT);
-        } else if (id == :city) {
+        if (id == :city) {
             WatchUi.pushView(new CityPickerMenu(), new CityPickerDelegate(_menu), WatchUi.SLIDE_LEFT);
         } else if (id == :method) {
             WatchUi.pushView(new MethodPickerMenu(), new MethodPickerDelegate(_menu), WatchUi.SLIDE_LEFT);
@@ -126,6 +136,18 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             var next = (cur >= 15) ? 0 : (cur / 5 + 1) * 5;
             Application.Properties.setValue("prealertFajr", next);
             Application.Properties.setValue("prealertOther", next);
+            _applyAndRefresh();
+        } else if (id == :endWarn) {
+            // cycle 0 -> 10 -> 20 -> 30 -> 0 minutes before Fajr / Asr run out
+            var cur = Settings.endWarnMinutes();
+            Application.Properties.setValue("endWarn", (cur >= 30) ? 0 : (cur / 10 + 1) * 10);
+            _applyAndRefresh();
+        } else if (id == :ramadan) {
+            Application.Properties.setValue("ramadanMode", (Settings.ramadanMode() == 0) ? 1 : 0);
+            _applyAndRefresh();
+        } else if (id == :hijri) {
+            var a = Settings.hijriAdjust() + 1;
+            Application.Properties.setValue("hijriAdjust", (a > 2) ? -2 : a);
             _applyAndRefresh();
         } else if (id == :testNotify) {
             _menu.setTestResult(PrayerNotifier.scheduleTest());
@@ -166,16 +188,18 @@ function mark(isCurrent) {
     return isCurrent ? "*" : null;
 }
 
+// Auto, then the 16 big cities, then every other place alphabetically.
 class CityPickerMenu extends WatchUi.Menu2 {
     function initialize() {
         Menu2.initialize({ :title => PrayerNames.pick("Қала", "Город", "City") });
         var cur = Settings.manualCityIdx();
-        addItem(new WatchUi.MenuItem(SettingsMenu.autoCityLabel(), mark(cur < 0), -1, null));
-        var cities = Cities.all();
-        for (var i = 0; i < cities.size(); i++) {
+        addItem(new WatchUi.MenuItem(SettingsMenu.autoLabel() + " (GPS)", mark(cur < 0), -1, null));
+        var lang = Settings.language();
+        for (var i = 0; i < CityIndex.count(); i++) {
             addItem(new WatchUi.MenuItem(
-                Cities.localizedName(cities[i], Settings.language()), mark(cur == i), i, null));
+                Cities.localizedName(CityIndex.at(i), lang), mark(cur == i), i, null));
         }
+        if (cur >= 0) { setFocus(cur + 1); }
     }
 }
 
@@ -243,13 +267,12 @@ class ThemePickerMenu extends WatchUi.Menu2 {
     static function label(idx) {
         if (idx == 1) { return PrayerNames.pick("Жалбыз", "Мята", "Mint"); }
         if (idx == 2) { return PrayerNames.pick("Аспан", "Небо", "Sky"); }
-        if (idx == 3) { return PrayerNames.pick("Моно", "Моно", "Mono"); }
         return PrayerNames.pick("Қола", "Бронза", "Bronze");
     }
     function initialize() {
         Menu2.initialize({ :title => PrayerNames.pick("Түс", "Цвет", "Theme") });
         var cur = Settings.themeIdx();
-        for (var i = 0; i < 4; i++) {
+        for (var i = 0; i < 3; i++) {
             addItem(new WatchUi.MenuItem(label(i), mark(cur == i), i, null));
         }
     }

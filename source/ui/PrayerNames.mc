@@ -68,6 +68,25 @@ module PrayerNames {
         return pick(hm + " қалды", "через " + hm, "in " + hm);
     }
 
+    // Notification title: "Fajr ends 05:46".
+    function endsWord() {
+        return pick("аяқталады", "заканчивается", "ends");
+    }
+
+    // Ramadan: the two countdown targets.
+    function iftarLabel() {
+        return pick("Ауызашар", "Ифтар", "Iftar");
+    }
+
+    function suhoorLabel() {
+        return pick("Сәресі", "Сухур", "Suhoor");
+    }
+
+    // Running prayer + what is left of its time: "Asr: 0:42 left".
+    function windowLeft(sym, hm) {
+        return nameOf(sym) + ": " + pick(hm + " қалды", "ещё " + hm, hm + " left");
+    }
+
     function nextLabel() {
         var lang = Settings.language();
         if (lang.equals("kk")) { return NEXT_KK; }

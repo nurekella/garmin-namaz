@@ -1,25 +1,33 @@
 using Toybox.Lang;
 
-// Gregorian -> Hijri date conversion using the Kuwaiti tabular algorithm
-// (also called "civil Islamic calendar"). 30-year cycle with 11 leap
-// years (2,5,7,10,13,16,18,21,24,26,29). Months alternate 30/29 days
-// for months 1..11; month 12 is 29 days in common years, 30 in leap.
+// Gregorian -> Hijri date conversion.
 //
-// Drift versus Umm al-Qura: most days agree exactly, occasional ±1 day
-// differences appear at month boundaries because Umm al-Qura uses
-// astronomical observation calibrations that the tabular algorithm
-// cannot capture without a per-year override table. For prayer-time
-// app context (a date label on the home screen) ±1 day is acceptable
-// in v1.0; v1.1 can swap in a Umm al-Qura override map for the years
-// the app actually targets.
+// Within the table (1440..1500 AH = Sep 2018 .. 2077) this is the real
+// Umm al-Qura calendar, generated from ICU: UQ_MASKS holds one 12-bit
+// mask per Hijri year, bit (m-1) set when month m has 30 days (else 29).
+// Outside it we fall back to the Kuwaiti tabular algorithm (30-year cycle,
+// 11 leap years), which can be a day or two off Umm al-Qura.
 //
-// Reference: https://www.staff.science.uu.nl/~gent0113/islam/ummalqura.htm
-//            (Kuwaiti algorithm formulas)
+// ҚМДБ announces month starts by moon sighting and can differ from Umm
+// al-Qura by a day; Settings.hijriAdjust (-2..+2) shifts the date for that.
 (:glance, :background)
 module HijriDate {
 
     // Julian Day Number of 1 Muharram 1 AH = 16 July 622 CE (Julian).
     const EPOCH_JDN = 1948440;
+
+    // Umm al-Qura table: 1 Muharram 1440 AH = 2018-09-11.
+    const UQ_FIRST = 1440;
+    const UQ_START_JDN = 2458373;
+    const UQ_MASKS = [
+        0x2BA, 0x5B5, 0x5AA, 0xD55, 0xA9A, 0x92E, 0x26E, 0x55D, 0xADA, 0x6D4,
+        0x6A5, 0xB27, 0xA4D, 0x4AD, 0x56D, 0xB5A, 0x754, 0xF49, 0xE92, 0xD26,
+        0xA56, 0x356, 0x6B5, 0xBAA, 0xB92, 0xB25, 0x68B, 0xA9B, 0x55A, 0xADA,
+        0x5B4, 0xDA9, 0xB52, 0xA9A, 0x536, 0x276, 0x575, 0xAF2, 0x6D4, 0x6A9,
+        0x555, 0x2AD, 0x4BD, 0x9BA, 0x574, 0xB69, 0xB52, 0xA95, 0x52D, 0xA5D,
+        0x4DA, 0xAD9, 0x6B2, 0xE95, 0xE2A, 0xC96, 0x92E, 0xAAD, 0x56A, 0xD65,
+        0xD4A
+    ];
 
     // Returns { :year, :month (1..12), :day (1..30) } for the Gregorian
     // (year, month, day). Treats the date as civil-noon for JDN purposes
@@ -29,8 +37,38 @@ module HijriDate {
         return fromJdn(jdNoon);
     }
 
+    // The date as the user wants to see it: fromGregorian shifted by
+    // Settings.hijriAdjust() days.
+    function forDate(year, month, day) {
+        return fromJdn(_gregorianJdn(year, month, day) + Settings.hijriAdjust());
+    }
+
     // Same conversion starting from a Julian Day Number directly.
     function fromJdn(jdn) {
+        var uq = _umAlQura(jdn - UQ_START_JDN);
+        if (uq != null) { return uq; }
+        return _kuwaiti(jdn);
+    }
+
+    function _umAlQura(off) {
+        if (off < 0) { return null; }
+        for (var i = 0; i < UQ_MASKS.size(); i++) {
+            var mask = UQ_MASKS[i];
+            var len = 348;                              // 12 x 29
+            for (var m = 0; m < 12; m++) { len += (mask >> m) & 1; }
+            if (off >= len) { off -= len; continue; }
+            for (var m = 0; m < 12; m++) {
+                var ml = 29 + ((mask >> m) & 1);
+                if (off < ml) {
+                    return { :year => UQ_FIRST + i, :month => m + 1, :day => off + 1 };
+                }
+                off -= ml;
+            }
+        }
+        return null;
+    }
+
+    function _kuwaiti(jdn) {
         var n = jdn - EPOCH_JDN;            // days since epoch
         var hYear = ((30 * n + 10646) / 10631).toLong().toNumber();
         var yearStart = _yearStartJdn(hYear);

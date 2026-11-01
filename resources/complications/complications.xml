@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+    <complications>
+        <complication id="0" access="public"
+                      longLabel="@Strings.CompNextPrayer"
+                      shortLabel="@Strings.CompShort"
+                      icon="@Drawables.ComplicationIcon"
+                      glancePreview="true">
+            <faceIt defaultText="@Strings.CompNextPrayer"/>
+        </complication>
+    </complications>
+</resources>

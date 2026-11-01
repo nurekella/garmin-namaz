@@ -129,4 +129,58 @@ module HijriDateTest {
         return HijriDate.monthName(0).equals("")
             && HijriDate.monthName(13).equals("");
     }
+
+    // Umm al-Qura reference dates from ICU (islamic-umalqura): the 1st of
+    // Ramadan 1447 / Shawwal / Dhul-Hijjah, the table's first day and
+    // years in between. [gYear, gMonth, gDay, hYear, hMonth, hDay]
+    const UQ_REF = [
+        [2018, 9, 11, 1440, 1, 1],
+        [2018, 9, 11, 1440, 1, 1],
+        [2019, 6, 4, 1440, 10, 1],
+        [2022, 4, 2, 1443, 9, 1],
+        [2024, 3, 11, 1445, 9, 1],
+        [2025, 3, 1, 1446, 9, 1],
+        [2025, 3, 30, 1446, 10, 1],
+        [2026, 2, 17, 1447, 8, 29],
+        [2026, 2, 18, 1447, 9, 1],
+        [2026, 2, 19, 1447, 9, 2],
+        [2026, 3, 19, 1447, 9, 30],
+        [2026, 3, 20, 1447, 10, 1],
+        [2026, 3, 21, 1447, 10, 2],
+        [2026, 5, 26, 1447, 12, 9],
+        [2026, 5, 27, 1447, 12, 10],
+        [2026, 10, 1, 1448, 4, 20],
+        [2026, 12, 31, 1448, 7, 22],
+        [2027, 2, 7, 1448, 8, 30],
+        [2027, 2, 8, 1448, 9, 1],
+        [2030, 7, 1, 1452, 2, 29],
+        [2050, 1, 1, 1472, 4, 7],
+        [2076, 11, 15, 1499, 12, 18]
+    ];
+
+    (:test)
+    function testUmmAlQuraMatchesIcu(logger) {
+        var ok = true;
+        for (var i = 0; i < UQ_REF.size(); i++) {
+            var r = UQ_REF[i];
+            if (!_check(logger, r[0], r[1], r[2], r[3], r[4], r[5])) { ok = false; }
+        }
+        return ok;
+    }
+
+    // Past the table (2077+) we fall back to the tabular algorithm: still a
+    // plausible date, no crash.
+    (:test)
+    function testFallbackOutsideTable(logger) {
+        var h = HijriDate.fromGregorian(2090, 1, 1);
+        return h[:year] > 1500 && h[:month] >= 1 && h[:month] <= 12 && h[:day] >= 1 && h[:day] <= 30;
+    }
+
+    // The Hijri adjustment is applied by forDate only.
+    (:test)
+    function testAdjustDefaultsToZero(logger) {
+        var a = HijriDate.fromGregorian(2026, 10, 1);
+        var b = HijriDate.forDate(2026, 10, 1);
+        return a[:day] == b[:day] && a[:month] == b[:month] && Settings.hijriAdjust() == 0;
+    }
 }

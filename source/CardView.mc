@@ -119,18 +119,21 @@ class CardView extends WatchUi.View {
         }
 
         var sym  = ORDER[_idx];
-        var next = _calc.nextAfter(_location.getCurrentLocation(), Time.now());
+        var loc  = _location.getCurrentLocation();
+        var now  = Time.now();
+        var next = _calc.nextAfter(loc, now);
+        var fast = Fasting.next(_calc, loc, now);          // null outside Ramadan
         if (sym == :overview) {
-            _drawOverview(dc, info, next);
+            _drawOverview(dc, info, next, fast);
         } else if (sym == :countdown) {
-            _drawCountdown(dc, info, next);
+            _drawCountdown(dc, info, next, fast, _calc.currentWindow(loc, now));
         } else {
-            _drawWeek(dc);
+            _drawWeek(dc, info);
         }
         _drawPagerDots(dc);
     }
 
-    function _drawOverview(dc as Graphics.Dc, info, next) as Void {
+    function _drawOverview(dc as Graphics.Dc, info, next, fast) as Void {
         var center = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
 
         // ---- header: Gregorian + Hijri dates ----
@@ -169,15 +172,22 @@ class CardView extends WatchUi.View {
                         Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
         }
 
-        // ---- time left to the highlighted row ----
-        if (next != null) {
-            dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
+        // ---- bottom line: Ramadan -> iftar / end of suhoor, else the next prayer ----
+        dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
+        if (fast != null) {
+            dc.drawText(Theme.CENTER_X, 368, Fonts.small(),
+                        _fastLabel(fast) + " " + PrayerNames.timeLeft(TimeFormatter.hm(fast[:secondsUntil])),
+                        center);
+        } else if (next != null) {
             dc.drawText(Theme.CENTER_X, 368, Fonts.small(),
                         PrayerNames.timeLeft(TimeFormatter.hm(next[:secondsUntil])), center);
         }
     }
 
-    function _drawCountdown(dc as Graphics.Dc, info, next) as Void {
+    // Next prayer with a live countdown. In Ramadan the hero is the fast
+    // (iftar / end of suhoor) and the next prayer drops to a small line.
+    // Under it: the prayer that is running now and how long it lasts.
+    function _drawCountdown(dc as Graphics.Dc, info, next, fast, win) as Void {
         if (next == null) { return; }
         var center = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
 
@@ -185,28 +195,52 @@ class CardView extends WatchUi.View {
         dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
         dc.drawText(Theme.CENTER_X, 32, Fonts.small(),
                     _pad2(info.hour) + ":" + _pad2(info.min), center);
-        dc.drawText(Theme.CENTER_X, 70, Fonts.tiny(), PrayerNames.nextLabel(), center);
+
+        var title = PrayerNames.nameOf(next[:name]);
+        var secs  = next[:secondsUntil];
+        var at    = next[:time];
+        var sub   = PrayerNames.nextLabel();
+        if (fast != null) {
+            title = _fastLabel(fast);
+            secs  = fast[:secondsUntil];
+            at    = fast[:time];
+            sub   = PrayerNames.nextLabel() + " " + PrayerNames.nameOf(next[:name])
+                  + " " + TimeFormatter.hhmm(next[:time]);
+        }
+        dc.drawText(Theme.CENTER_X, 70, Fonts.tiny(), sub, center);
 
         dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 120, Fonts.medium(), PrayerNames.nameOf(next[:name]), center);
+        dc.drawText(Theme.CENTER_X, 120, Fonts.medium(), title, center);
 
         // Hero countdown — biggest number font available.
         dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
         dc.drawText(Theme.CENTER_X, 220, Graphics.FONT_NUMBER_THAI_HOT,
-                    TimeFormatter.countdown(next[:secondsUntil]), center);
+                    TimeFormatter.countdown(secs), center);
 
         dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 288, Fonts.small(),
-                    PrayerNames.pick("сағат ", "в ", "at ") + TimeFormatter.hhmm(next[:time]), center);
+        dc.drawText(Theme.CENTER_X, 282, Fonts.small(),
+                    PrayerNames.pick("сағат ", "в ", "at ") + TimeFormatter.hhmm(at), center);
+
+        if (win != null) {
+            dc.setColor((win[:secondsLeft] <= 20 * 60) ? Theme.COLOR_WARN : Theme.accent(),
+                        Graphics.COLOR_TRANSPARENT);
+            dc.drawText(Theme.CENTER_X, 312, Fonts.small(),
+                        PrayerNames.windowLeft(win[:name], TimeFormatter.hm(win[:secondsLeft])), center);
+        }
 
         dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(Theme.CENTER_X, 332, Fonts.small(), _gregStr(info), center);
-        dc.drawText(Theme.CENTER_X, 358, Fonts.small(), _hijriStr(info), center);
+        dc.drawText(Theme.CENTER_X, 342, Fonts.small(), _gregStr(info), center);
+        dc.drawText(Theme.CENTER_X, 366, Fonts.small(), _hijriStr(info), center);
+    }
+
+    function _fastLabel(fast) {
+        return fast[:iftar] ? PrayerNames.iftarLabel() : PrayerNames.suhoorLabel();
     }
 
     // 7 days of upcoming Fajr / Maghrib in a compact table — for planning
-    // sahoor / iftar.
-    function _drawWeek(dc as Graphics.Dc) as Void {
+    // suhoor / iftar (the column headers say so in Ramadan).
+    function _drawWeek(dc as Graphics.Dc, info) as Void {
+        var ramadan = Fasting.isRamadan(info.year, info.month, info.day);
         var loc = _location.getCurrentLocation();
         var left   = Graphics.TEXT_JUSTIFY_LEFT   | Graphics.TEXT_JUSTIFY_VCENTER;
         var center = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
@@ -219,8 +253,10 @@ class CardView extends WatchUi.View {
         dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
         dc.drawText(Theme.CENTER_X - 100, 82, Fonts.xtiny(),
                     PrayerNames.pick("Күн", "День", "Day"), left);
-        dc.drawText(Theme.CENTER_X, 82, Fonts.xtiny(), PrayerNames.nameOf(:fajr), center);
-        dc.drawText(Theme.CENTER_X + 100, 82, Fonts.xtiny(), PrayerNames.nameOf(:maghrib), right);
+        dc.drawText(Theme.CENTER_X, 82, Fonts.xtiny(),
+                    ramadan ? PrayerNames.suhoorLabel() : PrayerNames.nameOf(:fajr), center);
+        dc.drawText(Theme.CENTER_X + 100, 82, Fonts.xtiny(),
+                    ramadan ? PrayerNames.iftarLabel() : PrayerNames.nameOf(:maghrib), right);
 
         for (var i = 0; i < 7; i++) {
             var di = Gregorian.info(Time.now().add(new Time.Duration(i * 86400)), Time.FORMAT_SHORT);
@@ -250,7 +286,7 @@ class CardView extends WatchUi.View {
     }
 
     function _hijriStr(info) {
-        var hd = HijriDate.fromGregorian(info.year, info.month, info.day);
+        var hd = HijriDate.forDate(info.year, info.month, info.day);
         return hd[:day] + " " + HijriDate.monthName(hd[:month]) + " " + hd[:year];
     }
 
@@ -282,12 +318,14 @@ class CardView extends WatchUi.View {
 
     function _resolveCityLabel(loc) {
         if (loc == null) { return ""; }
+        var lang = Settings.language();
         if (loc[:cityId] != null) {
-            var c = Cities.byId(loc[:cityId]);
-            if (c != null) { return Cities.localizedName(c, Settings.language()); }
+            var c = CityIndex.byId(loc[:cityId]);
+            if (c != null) { return Cities.localizedName(c, lang); }
         }
         if (loc[:source] == :gps || loc[:source] == :cached) {
-            return "GPS";
+            var near = CityIndex.nearest(loc[:lat], loc[:lon]);
+            return (near != null) ? Cities.localizedName(near, lang) : "GPS";
         }
         return "";
     }

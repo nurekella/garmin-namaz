@@ -23,6 +23,7 @@ class NamazApp extends Application.AppBase {
 
     function onSettingsChanged() as Void {
         _applySettings();
+        CityIndex.sync(_location);
         // Re-arm the temporal event with the new schedule.
         PrayerNotifier.schedule(_calculator, _location);
         // Force the visible view to re-pull _calc and redraw.
@@ -44,6 +45,7 @@ class NamazApp extends Application.AppBase {
     function getInitialView() as [WatchUi.Views] or [WatchUi.Views, WatchUi.InputDelegates] {
         // Foreground launch only: arm the next prayer alert so it fires
         // after the app is closed. BackgroundService keeps the chain going.
+        CityIndex.sync(_location);
         PrayerNotifier.schedule(_calculator, _location);
         var view = new CardView(_calculator, _location);
         var delegate = new CardDelegate(view, true);

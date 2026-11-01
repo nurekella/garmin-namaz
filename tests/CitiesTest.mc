@@ -128,4 +128,39 @@ module CitiesTest {
         }
         return true;
     }
+
+    (:test)
+    function testCityIndexCountMatchesSetting(logger) {
+        // Settings.CITY_COUNT is a copy (the background cannot load CityIndex).
+        if (CityIndex.count() != Settings.CITY_COUNT) {
+            logger.error("CityIndex.count()=" + CityIndex.count() + " but Settings.CITY_COUNT=" + Settings.CITY_COUNT);
+            return false;
+        }
+        return true;
+    }
+
+    (:test)
+    function testCityIndexIdsRoundTrip(logger) {
+        for (var i = 0; i < CityIndex.count(); i++) {
+            var c = CityIndex.at(i);
+            var back = CityIndex.byId(c[:id]);
+            if (back == null || !back[:name_kk].equals(c[:name_kk])) {
+                logger.error("id round trip failed at " + i + " (" + c[:id] + ")");
+                return false;
+            }
+        }
+        return true;
+    }
+
+    (:test)
+    function testNearestNamesTheCity(logger) {
+        // A fix a few km from Petropavl's centre -> Petropavl; the steppe -> nothing.
+        var n = CityIndex.nearest(54.89d, 69.20d);
+        if (n == null || !n[:name_kk].equals("Петропавл")) { logger.error("expected Petropavl"); return false; }
+        // A place that is only in the big index: Rudnyy.
+        var r = CityIndex.nearest(52.97d, 63.12d);
+        if (r == null || !r[:name_en].equals("Rudnyy")) { logger.error("expected Rudnyy"); return false; }
+        if (CityIndex.nearest(47.0d, 66.0d) != null) { logger.error("nothing within 30 km of the open steppe"); return false; }
+        return true;
+    }
 }

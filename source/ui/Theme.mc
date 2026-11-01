@@ -14,6 +14,7 @@ module Theme {
     const COLOR_TEXT        = 0xFFFFFF;  // primary text — pure white for max contrast on AMOLED
     const COLOR_TEXT_DIM    = 0xA8A29A;  // secondary text — labels, dates
     const COLOR_TEXT_MUTED  = 0x6E6860;  // tertiary — passed prayers
+    const COLOR_WARN        = 0xFF7A66;  // a prayer's time is about to run out
 
     // Accent palettes — selectable via Settings.themeIdx.
     const ACCENT_BRONZE     = 0xD4A574;
@@ -22,8 +23,6 @@ module Theme {
     const ACCENT_MINT_DIM   = 0x3F9579;
     const ACCENT_SKY        = 0x6EB4FF;
     const ACCENT_SKY_DIM    = 0x3F73B5;
-    const ACCENT_MONO       = 0xE8E0D4;
-    const ACCENT_MONO_DIM   = 0x9E9890;
 
     // Legacy constants — kept so existing call sites still compile.
     // New code should use accent() / accentDim() to honour the user's pick.
@@ -34,7 +33,6 @@ module Theme {
         var idx = Settings.themeIdx();
         if (idx == 1) { return ACCENT_MINT; }
         if (idx == 2) { return ACCENT_SKY; }
-        if (idx == 3) { return ACCENT_MONO; }
         return ACCENT_BRONZE;
     }
 
@@ -42,7 +40,6 @@ module Theme {
         var idx = Settings.themeIdx();
         if (idx == 1) { return ACCENT_MINT_DIM; }
         if (idx == 2) { return ACCENT_SKY_DIM; }
-        if (idx == 3) { return ACCENT_MONO_DIM; }
         return ACCENT_BRONZE_DIM;
     }
 

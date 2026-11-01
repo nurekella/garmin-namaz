@@ -2,38 +2,44 @@ using Toybox.Lang;
 
 // Қазақстан мұсылмандары діни басқармасы (ҚМДБ / DUMK) prayer-time method.
 //
-// Calibrated against https://api.muftyat.kz/prayer-times/ for Almaty,
-// Astana and Shymkent at 4 reference dates in 2026 (Jan 1, Apr 29, Jun 21,
-// Dec 21). With the constants below the calculator stays within ±2.5 min
-// of the official ҚМДБ schedule for those cities; mean residual ≤ 1.5 min.
-// See `tests/PrayerCalculatorTest.mc` for the comparison harness.
+// Reverse-engineered from the official tables (api.muftyat.kz/prayer-times)
+// of 36 places across Kazakhstan, every day of 2026. The model below is
+// within 1 min of the official minute for ~97% of Fajr, 100% of sunrise,
+// Dhuhr and Asr, and 95% / 86% of Maghrib / Isha; the worst Fajr/Isha
+// miss is 3.3 min (right at the summer switch to the night-fraction rule).
 //
-// The `:offsets` dictionary bakes in the calibration. User-level per-prayer
-// offsets (from settings) are applied on top by PrayerCalculator and do
-// not replace these.
+//   * Sunrise/Maghrib: sun 1.0° below the horizon; Dhuhr/Asr are noon and
+//     Hanafi Asr. ҚМДБ adds whole precaution minutes, and they step up at
+//     48° N: +3 Dhuhr, -2 Sunrise, +2 Maghrib, +3 Asr (south), but
+//     +5, -4, +4, +5 from 48° north.
+//   * Fajr: sun 15.0° below the horizon, no extra minutes.
+//   * Isha mirrors Fajr: Isha - Maghrib = Sunrise - Fajr.
+//   * In summer in the north that angle is unreachable or too far from the
+//     horizon; ҚМДБ then caps the twilight at ~24.2% of the night
+//     (Sunrise -> Maghrib), which is what :nightCap does.
+//
+// User-level per-prayer offsets (from settings) are applied on top by
+// PrayerCalculator and do not replace these.
 (:glance, :background)
 module DumkMethod {
 
     const ID              = "DUMK";
-    const FAJR_ANGLE      = 15.5d;   // sun degrees below horizon at Fajr
-    const ISHA_ANGLE      = 15.5d;   // sun degrees below horizon at Isha
+    const FAJR_ANGLE      = 15.0d;   // sun degrees below horizon at Fajr (Isha mirrors it)
     const SUNRISE_ANGLE   = 1.0d;    // refraction + disk rim convention used by ҚМДБ
+    const NIGHT_CAP       = 0.2417d; // max twilight, as a fraction of the night
+    const HIGH_LAT        = 48.0d;   // offsets step up from this latitude
     const DEFAULT_ASR     = 2;       // 1 = Standard, 2 = Hanafi (ҚМДБ uses Hanafi)
 
     function params() {
         return {
-            :id           => ID,
-            :fajrAngle    => FAJR_ANGLE,
-            :ishaAngle    => ISHA_ANGLE,
-            :sunriseAngle => SUNRISE_ANGLE,
-            :offsets      => {
-                :fajr    =>  3,
-                :sunrise => -2,
-                :dhuhr   =>  2,
-                :asr     =>  3,
-                :maghrib =>  2,
-                :isha    => -3
-            }
+            :id            => ID,
+            :fajrAngle     => FAJR_ANGLE,
+            :ishaSymmetric => true,
+            :nightCap      => NIGHT_CAP,
+            :sunriseAngle  => SUNRISE_ANGLE,
+            :highLat       => HIGH_LAT,
+            :offsets       => { :sunrise => -2, :dhuhr => 3, :asr => 3, :maghrib => 2 },
+            :offsetsHigh   => { :sunrise => -4, :dhuhr => 5, :asr => 5, :maghrib => 4 }
         };
     }
 }
