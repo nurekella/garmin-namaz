@@ -48,7 +48,7 @@ module PrayerNotifierTest {
     function _pickEnd(nowH, preFajr, preOther, endWarn) {
         var t = { :fajr => 5.0d, :sunrise => 6.5d, :dhuhr => 13.0d,
                   :asr => 17.0d, :maghrib => 20.0d, :isha => 21.5d };
-        return PrayerNotifier.pickAlert(t, nowH, preFajr, preOther, endWarn);
+        return PrayerNotifier.pickAlert(t, nowH, preFajr, preOther, endWarn, []);
     }
 
     (:test)

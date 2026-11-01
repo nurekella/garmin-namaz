@@ -13,8 +13,8 @@ using Toybox.Lang;
 class SettingsMenu extends WatchUi.Menu2 {
 
     static const ITEMS = [:city, :method, :asr, :notify, :prealert, :endWarn,
-                          :ramadan, :hijri, :testNotify, :offsets, :lang,
-                          :theme, :version];
+                          :fasts, :jumuah, :ramadan, :hijri, :ring, :extraCard,
+                          :theme, :lang, :offsets, :testNotify, :version];
 
     var _testSub = null;   // sub-label shown after "Test notification"
 
@@ -52,6 +52,10 @@ class SettingsMenu extends WatchUi.Menu2 {
         if (id == :notify)     { return p.pick("Хабарламалар", "Уведомления", "Notifications"); }
         if (id == :prealert)   { return p.pick("Алдын ала", "Заранее", "Pre-alert"); }
         if (id == :endWarn)    { return p.pick("Уақыт аяқталуы", "Конец времени", "Time ending"); }
+        if (id == :fasts)      { return p.pick("Ораза және мереке", "Посты и праздники", "Fasts & holidays"); }
+        if (id == :jumuah)     { return p.pick("Жұма ескертуі", "Напоминание о Джума", "Jumu'ah reminder"); }
+        if (id == :ring)       { return p.pick("Тәулік шеңбері", "Кольцо суток", "Day ring"); }
+        if (id == :extraCard)  { return p.pick("Духа / Таһажжуд", "Духа / Тахаджуд", "Duha / Tahajjud"); }
         if (id == :ramadan)    { return p.pick("Рамазан режимі", "Режим Рамадана", "Ramadan mode"); }
         if (id == :hijri)      { return p.pick("Хижра түзетуі", "Поправка хиджры", "Hijri adjust"); }
         if (id == :testNotify) { return p.pick("Хабарламаны тексеру", "Проверить уведомление", "Test notification"); }
@@ -75,9 +79,13 @@ class SettingsMenu extends WatchUi.Menu2 {
             return Methods.LABELS[idx];
         }
         if (id == :asr)      { return asrLabel(Settings.asrFactor()); }
-        if (id == :notify)   { return Settings.notificationsEnabled() ? p.pick("Қосулы", "Вкл", "On") : offLabel(); }
+        if (id == :notify)   { return onOff(Settings.notificationsEnabled()); }
         if (id == :prealert) { return minutesLabel(Settings.prealertOtherMinutes()); }
         if (id == :endWarn)  { return minutesLabel(Settings.endWarnMinutes()); }
+        if (id == :fasts)    { return onOff(Settings.remindFasts() == 1); }
+        if (id == :jumuah)   { return minutesLabel(Settings.jumuahBefore()); }
+        if (id == :ring)     { return onOff(Settings.dayRing() == 1); }
+        if (id == :extraCard) { return onOff(Settings.extraCard() == 1); }
         if (id == :ramadan)  { return (Settings.ramadanMode() == 0) ? autoLabel() : offLabel(); }
         if (id == :hijri) {
             var a = Settings.hijriAdjust();
@@ -88,6 +96,10 @@ class SettingsMenu extends WatchUi.Menu2 {
         if (id == :theme)    { return ThemePickerMenu.label(Settings.themeIdx()); }
         if (id == :version)  { return Settings.VERSION; }
         return null;
+    }
+
+    static function onOff(on) {
+        return on ? PrayerNames.pick("Қосулы", "Вкл", "On") : offLabel();
     }
 
     static function offLabel() {
@@ -141,6 +153,20 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             // cycle 0 -> 10 -> 20 -> 30 -> 0 minutes before Fajr / Asr run out
             var cur = Settings.endWarnMinutes();
             Application.Properties.setValue("endWarn", (cur >= 30) ? 0 : (cur / 10 + 1) * 10);
+            _applyAndRefresh();
+        } else if (id == :fasts) {
+            Application.Properties.setValue("remindFasts", (Settings.remindFasts() == 1) ? 0 : 1);
+            _applyAndRefresh();
+        } else if (id == :jumuah) {
+            // cycle Off -> 30 -> 60 -> Off minutes before Dhuhr on Fridays
+            var cur = Settings.jumuahBefore();
+            Application.Properties.setValue("jumuahBefore", (cur >= 60) ? 0 : cur + 30);
+            _applyAndRefresh();
+        } else if (id == :ring) {
+            Application.Properties.setValue("dayRing", (Settings.dayRing() == 1) ? 0 : 1);
+            _applyAndRefresh();
+        } else if (id == :extraCard) {
+            Application.Properties.setValue("extraCard", (Settings.extraCard() == 1) ? 0 : 1);
             _applyAndRefresh();
         } else if (id == :ramadan) {
             Application.Properties.setValue("ramadanMode", (Settings.ramadanMode() == 0) ? 1 : 0);

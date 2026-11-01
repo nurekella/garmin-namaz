@@ -39,7 +39,9 @@ module PrayerNotifier {
         if (rec == null || rec["title"] == null) { return; }
         if (!Settings.notificationsEnabled() && rec["test"] != true) { return; }
         if (Toybox has :Notifications) {
-            Notifications.showNotification(rec["title"], PrayerNames.prayerTimeLabel(),
+            var sub = rec["sub"];
+            Notifications.showNotification(rec["title"],
+                (sub != null) ? sub : PrayerNames.prayerTimeLabel(),
                 { :dismissPrevious => true });
         } else {
             // API < 5.1 (e.g. Venu Sq 2): system "open app?" prompt.
@@ -85,6 +87,10 @@ module PrayerNotifier {
         var target = _findNextNotifiable(calc, loc);
         if (target == null) { return null; }
 
+        if (target[:kind] == :extra) {
+            return _register({ "title" => target[:title], "sub" => target[:sub],
+                               "timestamp" => target[:timestampSec] });
+        }
         var title = PrayerNames.nameOf(target[:name]);
         if (target[:kind] == :end) {
             title += " " + PrayerNames.endsWord();
@@ -93,14 +99,18 @@ module PrayerNotifier {
             var info = Gregorian.info(new Time.Moment(target[:timestampSec]), Time.FORMAT_SHORT);
             if (info.day_of_week == 6) { title = PrayerNames.jumuah(); }
         }
-        var record = {
+        return _register({
             "title"     => title + " " + TimeFormatter.hhmm(target[:time]),
             "timestamp" => target[:timestampSec]
-        };
+        });
+    }
+
+    // Stores the record and arms the temporal event for it.
+    function _register(record) {
         Storage.set(STORAGE_KEY_NEXT, record);
 
         try {
-            Background.registerForTemporalEvent(new Time.Moment(target[:timestampSec]));
+            Background.registerForTemporalEvent(new Time.Moment(record["timestamp"]));
             Storage.remove(STORAGE_KEY_ERR);
         } catch (e) {
             // Most likely: inside the 5-min floor after the last run, or
@@ -156,19 +166,24 @@ module PrayerNotifier {
 
         var today = calc.calculate(loc[:lat], loc[:lon],
             nowInfo.year, nowInfo.month, nowInfo.day, loc[:tz]);
-        var pick = pickAlert(today, nowH, preFajr, preOther, endWarn);
+        var tInfo = Gregorian.info(nowMoment.add(new Time.Duration(86400)), Time.FORMAT_SHORT);
+        var pick = pickAlert(today, nowH, preFajr, preOther, endWarn,
+                             Occasions.extras(nowInfo, today, tInfo));
 
         if (pick == null) {
-            var tInfo = Gregorian.info(nowMoment.add(new Time.Duration(86400)), Time.FORMAT_SHORT);
             var tomorrow = calc.calculate(loc[:lat], loc[:lon],
                 tInfo.year, tInfo.month, tInfo.day, loc[:tz]);
             // Tomorrow's hours measured from today's clock: shift "now" back 24h.
-            pick = pickAlert(tomorrow, nowH - 24.0d, preFajr, preOther, endWarn);
+            var t2 = Gregorian.info(nowMoment.add(new Time.Duration(2 * 86400)), Time.FORMAT_SHORT);
+            pick = pickAlert(tomorrow, nowH - 24.0d, preFajr, preOther, endWarn,
+                             Occasions.extras(tInfo, tomorrow, t2));
         }
         if (pick == null) { return null; }
         return {
             :name         => pick[:name],
             :kind         => pick[:kind],
+            :title        => pick[:title],
+            :sub          => pick[:sub],
             :time         => pick[:time],
             :timestampSec => nowMoment.value() + pick[:deltaSec]
         };
@@ -184,7 +199,9 @@ module PrayerNotifier {
     // would push past the end itself is skipped.
     // Returns { :name => Symbol, :kind => :start or :end, :time => hours
     // shown in the title, :deltaSec => Number } or null.
-    function pickAlert(times, nowH, preFajr, preOther, endWarn) {
+    // `extras` are further points [hour, title, subtitle] (Occasions.extras)
+    // with their own text; they come back with :kind => :extra.
+    function pickAlert(times, nowH, preFajr, preOther, endWarn, extras) {
         var notifiable = [:fajr, :dhuhr, :asr, :maghrib, :isha];
         var bestSym   = null;
         var bestKind  = null;
@@ -213,9 +230,21 @@ module PrayerNotifier {
                 }
             }
         }
-        if (bestSym == null) { return null; }
+        var bestExtra = null;
+        for (var k = 0; k < extras.size(); k++) {
+            var x = extras[k];
+            if (x[0] > nowH && (bestTime == null || x[0] < bestTime)) {
+                bestTime  = x[0];
+                bestExtra = x;
+            }
+        }
+        if (bestSym == null && bestExtra == null) { return null; }
         var deltaSec = ((bestTime - nowH) * 3600.0d).toNumber();
         if (deltaSec < MIN_SCHEDULE_GAP_SEC) { deltaSec = MIN_SCHEDULE_GAP_SEC; }
+        if (bestExtra != null) {
+            return { :name => :extra, :kind => :extra, :time => bestExtra[0], :title => bestExtra[1],
+                     :sub => bestExtra[2], :deltaSec => deltaSec };
+        }
         return { :name => bestSym, :kind => bestKind, :time => bestShown, :deltaSec => deltaSec };
     }
 }

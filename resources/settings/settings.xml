@@ -28,6 +28,14 @@
         <property id="ramadanMode"   type="number">0</property>
         <!-- Hijri date shift in days (-2..+2): ҚМДБ announces month starts by moon sighting. -->
         <property id="hijriAdjust"   type="number">0</property>
+        <!-- Notify the evening before a sunnah fast / holiday. -->
+        <property id="remindFasts"   type="number">1</property>
+        <!-- Minutes before Dhuhr on Friday to remind about Jumu'ah; 0 = off. -->
+        <property id="jumuahBefore"  type="number">60</property>
+        <!-- 24 h ring around the main card. -->
+        <property id="dayRing"       type="number">1</property>
+        <!-- Optional Duha / Tahajjud card. -->
+        <property id="extraCard"     type="number">0</property>
         <!-- Colour theme: 0=Bronze (default), 1=Mint, 2=Sky. -->
         <property id="themeIdx"      type="number">0</property>
     </properties>
@@ -192,6 +200,27 @@
 
         <setting propertyKey="@Properties.endWarn" title="Warn before Fajr / Asr time ends (min, 0 = off)">
             <settingConfig type="numeric" min="0" max="60"/>
+        </setting>
+        <setting propertyKey="@Properties.remindFasts" title="Remind the evening before a sunnah fast / holiday">
+            <settingConfig type="list">
+                <listEntry value="1">On</listEntry>
+                <listEntry value="0">Off</listEntry>
+            </settingConfig>
+        </setting>
+        <setting propertyKey="@Properties.jumuahBefore" title="Jumu'ah reminder (min before Dhuhr, 0 = off)">
+            <settingConfig type="numeric" min="0" max="180"/>
+        </setting>
+        <setting propertyKey="@Properties.dayRing" title="24 h ring around the main card">
+            <settingConfig type="list">
+                <listEntry value="1">On</listEntry>
+                <listEntry value="0">Off</listEntry>
+            </settingConfig>
+        </setting>
+        <setting propertyKey="@Properties.extraCard" title="Show the Duha / Tahajjud card">
+            <settingConfig type="list">
+                <listEntry value="0">Off</listEntry>
+                <listEntry value="1">On</listEntry>
+            </settingConfig>
         </setting>
         <setting propertyKey="@Properties.ramadanMode" title="Ramadan mode">
             <settingConfig type="list">

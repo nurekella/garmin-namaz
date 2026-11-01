@@ -5,6 +5,7 @@ using Toybox.Time;
 using Toybox.Time.Gregorian;
 using Toybox.Timer;
 using Toybox.Lang;
+using Toybox.Math;
 using Toybox.Position;
 using Toybox.System;
 
@@ -14,7 +15,6 @@ using Toybox.System;
 //   week      — Fajr / Maghrib for the next 7 days (sahoor / iftar)
 class CardView extends WatchUi.View {
 
-    static const ORDER = [:overview, :countdown, :week];
     static const DOTS_Y = 398;
 
     var _calc;
@@ -63,9 +63,15 @@ class CardView extends WatchUi.View {
     // Only the countdown card shows seconds; the others redraw once a minute.
     function _tick() as Void {
         var min = System.getClockTime().min;
-        if (ORDER[_idx] != :countdown && min == _lastMin) { return; }
+        if (_order()[_idx % _order().size()] != :countdown && min == _lastMin) { return; }
         _lastMin = min;
         WatchUi.requestUpdate();
+    }
+
+    // The cards in swipe order; the Duha / Tahajjud card is opt-in.
+    function _order() {
+        if (Settings.extraCard() == 1) { return [:overview, :countdown, :week, :extra]; }
+        return [:overview, :countdown, :week];
     }
 
     function _refresh() as Void {
@@ -90,12 +96,12 @@ class CardView extends WatchUi.View {
     }
 
     function next() as Void {
-        _idx = (_idx + 1) % ORDER.size();
+        _idx = (_idx + 1) % _order().size();
         WatchUi.requestUpdate();
     }
 
     function prev() as Void {
-        _idx = (_idx + ORDER.size() - 1) % ORDER.size();
+        _idx = (_idx + _order().size() - 1) % _order().size();
         WatchUi.requestUpdate();
     }
 
@@ -118,7 +124,7 @@ class CardView extends WatchUi.View {
             return;
         }
 
-        var sym  = ORDER[_idx];
+        var sym  = _order()[_idx % _order().size()];
         var loc  = _location.getCurrentLocation();
         var now  = Time.now();
         var next = _calc.nextAfter(loc, now);
@@ -127,8 +133,10 @@ class CardView extends WatchUi.View {
             _drawOverview(dc, info, next, fast);
         } else if (sym == :countdown) {
             _drawCountdown(dc, info, next, fast, _calc.currentWindow(loc, now));
-        } else {
+        } else if (sym == :week) {
             _drawWeek(dc, info);
+        } else {
+            _drawExtra(dc);
         }
         _drawPagerDots(dc);
     }
@@ -142,18 +150,21 @@ class CardView extends WatchUi.View {
         dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
         dc.drawText(Theme.CENTER_X, 82, Fonts.small(), _hijriStr(info), center);
 
-        // ---- city, or Jumu'ah on Fridays (day_of_week 6) ----
-        if (info.day_of_week == 6) {
+        // ---- one slot: a holiday / fast worth knowing about, else the city ----
+        var nowH = info.hour + info.min / 60.0d + info.sec / 3600.0d;
+        var chip = Occasions.chip(info, Gregorian.info(Time.now().add(new Time.Duration(86400)), Time.FORMAT_SHORT),
+                                  nowH, _times[:maghrib], _times[:isha]);
+        if (chip != null) {
             dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
-            dc.drawText(Theme.CENTER_X, 116, Fonts.small(), PrayerNames.jumuah(), center);
+            dc.drawText(Theme.CENTER_X, 116, _fitFont(dc, chip, 330), chip, center);
         } else {
             dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
             dc.drawText(Theme.CENTER_X, 116, Fonts.small(),
                         _resolveCityLabel(_location.getCurrentLocation()), center);
         }
 
-        // ---- 5 prayers + sunrise ----
-        var nowH = info.hour + info.min / 60.0d + info.sec / 3600.0d;
+        // ---- 5 prayers + sunrise (Friday: Dhuhr is Jumu'ah) ----
+        var friday = (info.day_of_week == 6);
         var nextSym = (next != null) ? next[:name] : null;
         var prayers = [:fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha];
         for (var i = 0; i < prayers.size(); i++) {
@@ -165,8 +176,9 @@ class CardView extends WatchUi.View {
             var icon = _iconFor(sym);
             dc.drawBitmap(Theme.CENTER_X - 130, y - icon.getHeight() / 2, icon);
 
-            dc.setColor(_colorFor(sym, nextSym, t, nowH), Graphics.COLOR_TRANSPARENT);
-            dc.drawText(Theme.CENTER_X - 90, y, Fonts.medium(), PrayerNames.nameOf(sym),
+            var jumuah = (friday && sym == :dhuhr);
+            dc.setColor(jumuah ? Theme.accent() : _colorFor(sym, nextSym, t, nowH), Graphics.COLOR_TRANSPARENT);
+            dc.drawText(Theme.CENTER_X - 90, y, Fonts.medium(), jumuah ? PrayerNames.jumuah() : PrayerNames.nameOf(sym),
                         Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
             dc.drawText(Theme.CENTER_X + 120, y, Fonts.medium(), TimeFormatter.hhmm(t),
                         Graphics.TEXT_JUSTIFY_RIGHT | Graphics.TEXT_JUSTIFY_VCENTER);
@@ -182,6 +194,74 @@ class CardView extends WatchUi.View {
             dc.drawText(Theme.CENTER_X, 368, Fonts.small(),
                         PrayerNames.timeLeft(TimeFormatter.hm(next[:secondsUntil])), center);
         }
+
+        if (Settings.dayRing() == 1) { _drawRing(dc, nowH); }
+    }
+
+    // A smaller font when the text would not fit between the bezel edges.
+    function _fitFont(dc, text, maxW) {
+        return (dc.getTextWidthInPixels(text, Fonts.small()) <= maxW) ? Fonts.small() : Fonts.tiny();
+    }
+
+    // The day as a ring around the bezel: 00:00 at the top, clockwise.
+    // Prayer windows are arcs (past ones dark, the running one bright, the
+    // rest dim), Duha and Tahajjud white dots, "now" a big accent dot.
+    function _drawRing(dc, nowH) {
+        var cx = dc.getWidth() / 2;
+        var r = cx - 4;
+        var starts = [:fajr, :dhuhr, :asr, :maghrib];
+        var ends   = [:sunrise, :asr, :maghrib, :isha];
+        dc.setPenWidth(5);
+        dc.setColor(0x2A2520, Graphics.COLOR_TRANSPARENT);
+        dc.drawCircle(cx, cx, r);
+        for (var i = 0; i < starts.size(); i++) {
+            var a = _times[starts[i]];
+            var b = _times[ends[i]];
+            if (a == null || b == null) { continue; }
+            var color = Theme.accentDim();
+            if (b <= nowH) {
+                color = 0x4A4036;
+            } else if (a <= nowH) {
+                color = Theme.accent();
+            }
+            dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+            dc.drawArc(cx, cx, r, Graphics.ARC_CLOCKWISE, 90.0d - a * 15.0d, 90.0d - b * 15.0d);
+        }
+        dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
+        if (_times[:duha] != null) { _ringDot(dc, cx, r, _times[:duha], 4); }
+        if (_times[:tahajjud] != null) { _ringDot(dc, cx, r, _times[:tahajjud], 4); }
+        dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
+        _ringDot(dc, cx, r, nowH, 8);
+    }
+
+    function _ringDot(dc, cx, r, hour, size) {
+        var rad = (90.0d - hour * 15.0d) * 0.017453292519943295d;
+        dc.fillCircle(cx + (r * Math.cos(rad)).toNumber(), cx - (r * Math.sin(rad)).toNumber(), size);
+    }
+
+    // Duha and Tahajjud as plain times: reference times, not obligatory
+    // prayers, so they live on their own opt-in card.
+    function _drawExtra(dc as Graphics.Dc) as Void {
+        var center = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
+        dc.setColor(Theme.COLOR_TEXT_DIM, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, 60, Fonts.small(),
+                    PrayerNames.pick("ҚОСЫМША", "ДОПОЛНИТЕЛЬНО", "EXTRA"), center);
+        _extraRow(dc, 112, PrayerNames.pick("Духа", "Духа", "Duha"),
+                  PrayerNames.pick("күн шыққаннан кейін ¼", "четверть светового дня", "a quarter after sunrise"),
+                  _times[:duha]);
+        _extraRow(dc, 250, PrayerNames.pick("Таһажжуд", "Тахаджуд", "Tahajjud"),
+                  PrayerNames.pick("түннің соңғы үштен бірі", "последняя треть ночи", "last third of the night"),
+                  _times[:tahajjud]);
+    }
+
+    function _extraRow(dc, y, name, hint, hour) {
+        var center = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
+        dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, y, Fonts.medium(), name, center);
+        dc.setColor(Theme.COLOR_TEXT, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, y + 52, Graphics.FONT_NUMBER_MEDIUM, TimeFormatter.hhmm(hour), center);
+        dc.setColor(Theme.COLOR_TEXT_MUTED, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(Theme.CENTER_X, y + 96, Fonts.xtiny(), hint, center);
     }
 
     // Next prayer with a live countdown. In Ramadan the hero is the fast
@@ -331,7 +411,7 @@ class CardView extends WatchUi.View {
     }
 
     function _drawPagerDots(dc as Graphics.Dc) as Void {
-        var n = ORDER.size();
+        var n = _order().size();
         var spacing = 16;
         var x0 = Theme.CENTER_X - (n - 1) * spacing / 2;
         for (var i = 0; i < n; i++) {

@@ -85,6 +85,26 @@ module Settings {
         return intProp("endWarn");
     }
 
+    // Draw the 24 h ring around the main card (1) or not (0).
+    function dayRing() {
+        return intProp("dayRing") == 0 ? 0 : 1;
+    }
+
+    // Show the optional Duha / Tahajjud card (1) or hide it (0).
+    function extraCard() {
+        return intProp("extraCard") == 1 ? 1 : 0;
+    }
+
+    // Notify the evening before a sunnah fast / holiday (1) or not (0).
+    function remindFasts() {
+        return intProp("remindFasts") == 0 ? 0 : 1;
+    }
+
+    // Minutes before Dhuhr on Friday to remind about Jumu'ah; 0 = off.
+    function jumuahBefore() {
+        return intProp("jumuahBefore");
+    }
+
     // 0 = Ramadan mode switches on by itself in the Hijri month Ramadan,
     // 1 = never.
     function ramadanMode() {

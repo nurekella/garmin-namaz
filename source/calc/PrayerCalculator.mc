@@ -86,7 +86,19 @@ class PrayerCalculator {
             }
         }
 
+        // Reference times, not obligatory prayers. Duha: a quarter of the
+        // daylight after sunrise. Tahajjud: the last third of the night that
+        // ends at Fajr (tonight's Maghrib stands in for last night's).
+        var duha = (hSun != null) ? solarNoon - hSun / 2.0d : null;
+        var tahajjud = null;
+        if (maghrib != null && fajr != null) {
+            tahajjud = maghrib + ((24.0d - maghrib) + fajr) * 2.0d / 3.0d;
+            if (tahajjud >= 24.0d) { tahajjud -= 24.0d; }
+        }
+
         return {
+            :duha      => duha,
+            :tahajjud  => tahajjud,
             :fajr      => _withUser(fajr    != null ? fajr + _off(mo, :fajr) : null, :fajr),
             :sunrise   => _withUser(sunrise, :sunrise),
             :dhuhr     => _withUser(dhuhr,   :dhuhr),
