@@ -59,6 +59,26 @@ module PrayerNames {
         return en;
     }
 
+    // The watch's system font has no Kazakh-only letters (they show as "?"
+    // in notifications and system menus; Garmin has no Kazakh system
+    // language). Text that the OS draws goes through here: those nine
+    // letters become the nearest Russian ones. Our own screens are drawn
+    // with a vector font that has them and keep the real spelling.
+    const _KZ_FROM = "ӘәҒғҚқҢңӨөҰұҮүҺһІі";
+    const _KZ_TO   = "АаГгКкНнОоУуУуХхИи";
+
+    function safe(text) {
+        if (text == null) { return null; }
+        var out = "";
+        var chars = text.toCharArray();
+        for (var i = 0; i < chars.size(); i++) {
+            var c = chars[i].toString();
+            var k = _KZ_FROM.find(c);
+            out += (k != null) ? _KZ_TO.substring(k, k + 1) : c;
+        }
+        return out;
+    }
+
     function jumuah() {
         return pick("Жұма", "Жума", "Jumu'ah");
     }

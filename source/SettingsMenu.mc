@@ -19,18 +19,18 @@ class SettingsMenu extends WatchUi.Menu2 {
     var _testSub = null;   // sub-label shown after "Test notification"
 
     function initialize() {
-        Menu2.initialize({ :title => _title() });
+        Menu2.initialize({ :title => PrayerNames.safe(_title()) });
         for (var i = 0; i < ITEMS.size(); i++) {
-            addItem(new WatchUi.MenuItem(_label(ITEMS[i]), _sub(ITEMS[i]), ITEMS[i], null));
+            addItem(SettingsMenu.item(_label(ITEMS[i]), _sub(ITEMS[i]), ITEMS[i], null));
         }
     }
 
     function refresh() as Void {
-        setTitle(_title());
+        setTitle(PrayerNames.safe(_title()));
         for (var i = 0; i < ITEMS.size(); i++) {
             var item = getItem(findItemById(ITEMS[i]));
-            item.setLabel(_label(ITEMS[i]));
-            item.setSubLabel(_sub(ITEMS[i]));
+            item.setLabel(PrayerNames.safe(_label(ITEMS[i])));
+            item.setSubLabel(PrayerNames.safe(_sub(ITEMS[i])));
         }
     }
 
@@ -100,6 +100,11 @@ class SettingsMenu extends WatchUi.Menu2 {
 
     static function onOff(on) {
         return on ? PrayerNames.pick("Қосулы", "Вкл", "On") : offLabel();
+    }
+
+    // A menu row whose text is safe for the system font (see PrayerNames.safe).
+    static function item(label, sub, id, options) {
+        return new WatchUi.MenuItem(PrayerNames.safe(label), PrayerNames.safe(sub), id, options);
     }
 
     static function offLabel() {
@@ -217,12 +222,12 @@ function mark(isCurrent) {
 // Auto, then the 16 big cities, then every other place alphabetically.
 class CityPickerMenu extends WatchUi.Menu2 {
     function initialize() {
-        Menu2.initialize({ :title => PrayerNames.pick("Қала", "Город", "City") });
+        Menu2.initialize({ :title => PrayerNames.safe(PrayerNames.pick("Қала", "Город", "City")) });
         var cur = Settings.manualCityIdx();
-        addItem(new WatchUi.MenuItem(SettingsMenu.autoLabel() + " (GPS)", mark(cur < 0), -1, null));
+        addItem(SettingsMenu.item(SettingsMenu.autoLabel() + " (GPS)", mark(cur < 0), -1, null));
         var lang = Settings.language();
         for (var i = 0; i < CityIndex.count(); i++) {
-            addItem(new WatchUi.MenuItem(
+            addItem(SettingsMenu.item(
                 Cities.localizedName(CityIndex.at(i), lang), mark(cur == i), i, null));
         }
         if (cur >= 0) { setFocus(cur + 1); }
@@ -238,11 +243,11 @@ class CityPickerDelegate extends WatchUi.Menu2InputDelegate {
 
 class MethodPickerMenu extends WatchUi.Menu2 {
     function initialize() {
-        Menu2.initialize({ :title => PrayerNames.pick("Әдіс", "Метод", "Method") });
+        Menu2.initialize({ :title => PrayerNames.safe(PrayerNames.pick("Әдіс", "Метод", "Method")) });
         var v = Application.Properties.getValue("methodIdx");
         var cur = (v == null) ? 0 : v.toNumber();
         for (var i = 0; i < Methods.LABELS.size(); i++) {
-            addItem(new WatchUi.MenuItem(Methods.LABELS[i], mark(cur == i), i, null));
+            addItem(SettingsMenu.item(Methods.LABELS[i], mark(cur == i), i, null));
         }
     }
 }
@@ -256,10 +261,10 @@ class MethodPickerDelegate extends WatchUi.Menu2InputDelegate {
 
 class AsrPickerMenu extends WatchUi.Menu2 {
     function initialize() {
-        Menu2.initialize({ :title => PrayerNames.nameOf(:asr) });
+        Menu2.initialize({ :title => PrayerNames.safe(PrayerNames.nameOf(:asr)) });
         var cur = Settings.asrFactor();
-        addItem(new WatchUi.MenuItem(SettingsMenu.asrLabel(1), mark(cur == 1), 1, null));
-        addItem(new WatchUi.MenuItem(SettingsMenu.asrLabel(2), mark(cur == 2), 2, null));
+        addItem(SettingsMenu.item(SettingsMenu.asrLabel(1), mark(cur == 1), 1, null));
+        addItem(SettingsMenu.item(SettingsMenu.asrLabel(2), mark(cur == 2), 2, null));
     }
 }
 
@@ -274,10 +279,10 @@ class LangPickerMenu extends WatchUi.Menu2 {
     // Index = langIdx property. Language names in their own language.
     static const ENTRIES = ["Auto", "Қазақша", "Русский", "English"];
     function initialize() {
-        Menu2.initialize({ :title => PrayerNames.pick("Тіл", "Язык", "Language") });
+        Menu2.initialize({ :title => PrayerNames.safe(PrayerNames.pick("Тіл", "Язык", "Language")) });
         var cur = Settings.langIdx();
         for (var i = 0; i < ENTRIES.size(); i++) {
-            addItem(new WatchUi.MenuItem(ENTRIES[i], mark(cur == i), i, null));
+            addItem(SettingsMenu.item(ENTRIES[i], mark(cur == i), i, null));
         }
     }
 }
@@ -296,10 +301,10 @@ class ThemePickerMenu extends WatchUi.Menu2 {
         return PrayerNames.pick("Қола", "Бронза", "Bronze");
     }
     function initialize() {
-        Menu2.initialize({ :title => PrayerNames.pick("Түс", "Цвет", "Theme") });
+        Menu2.initialize({ :title => PrayerNames.safe(PrayerNames.pick("Түс", "Цвет", "Theme")) });
         var cur = Settings.themeIdx();
         for (var i = 0; i < 3; i++) {
-            addItem(new WatchUi.MenuItem(label(i), mark(cur == i), i, null));
+            addItem(SettingsMenu.item(label(i), mark(cur == i), i, null));
         }
     }
 }
@@ -325,9 +330,9 @@ class OffsetsMenu extends WatchUi.Menu2 {
     ];
 
     function initialize() {
-        Menu2.initialize({ :title => PrayerNames.pick("Түзетулер", "Поправки", "Offsets") });
+        Menu2.initialize({ :title => PrayerNames.safe(PrayerNames.pick("Түзетулер", "Поправки", "Offsets")) });
         for (var i = 0; i < PRAYERS.size(); i++) {
-            addItem(new WatchUi.MenuItem(PrayerNames.nameOf(PRAYERS[i][0]),
+            addItem(SettingsMenu.item(PrayerNames.nameOf(PRAYERS[i][0]),
                 _formatVal(Settings.intProp(PRAYERS[i][1])), i, null));
         }
     }

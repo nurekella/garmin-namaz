@@ -40,12 +40,12 @@ module PrayerNotifier {
         if (!Settings.notificationsEnabled() && rec["test"] != true) { return; }
         if (Toybox has :Notifications) {
             var sub = rec["sub"];
-            Notifications.showNotification(rec["title"],
-                (sub != null) ? sub : PrayerNames.prayerTimeLabel(),
+            Notifications.showNotification(PrayerNames.safe(rec["title"]),
+                PrayerNames.safe((sub != null) ? sub : PrayerNames.prayerTimeLabel()),
                 { :dismissPrevious => true });
         } else {
             // API < 5.1 (e.g. Venu Sq 2): system "open app?" prompt.
-            Background.requestApplicationWake(rec["title"]);
+            Background.requestApplicationWake(PrayerNames.safe(rec["title"]));
         }
     }
 

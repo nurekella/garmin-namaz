@@ -109,4 +109,16 @@ module PrayerNamesTest {
     function testNextLabelNonEmpty(logger) {
         return PrayerNames.nextLabel().length() > 0;
     }
+
+    (:test)
+    function testSafeFoldsKazakhLetters(logger) {
+        Test.assert(PrayerNames.safe("Таң").equals("Тан"));
+        Test.assert(PrayerNames.safe("Бесін").equals("Бесин"));
+        Test.assert(PrayerNames.safe("Ақшам").equals("Акшам"));
+        Test.assert(PrayerNames.safe("Құптан").equals("Куптан"));
+        Test.assert(PrayerNames.safe("Қазақша Ғ Ө Ү Һ").equals("Казакша Г О У Х"));
+        Test.assert(PrayerNames.safe("Fajr 04:31 Фаджр").equals("Fajr 04:31 Фаджр"));   // untouched
+        Test.assert(PrayerNames.safe(null) == null);
+        return true;
+    }
 }
