@@ -32,8 +32,6 @@
         <property id="remindFasts"   type="number">1</property>
         <!-- Minutes before Dhuhr on Friday to remind about Jumu'ah; 0 = off. -->
         <property id="jumuahBefore"  type="number">60</property>
-        <!-- 24 h ring around the main card. -->
-        <property id="dayRing"       type="number">1</property>
         <!-- Optional Duha / Tahajjud card. -->
         <property id="extraCard"     type="number">0</property>
         <!-- Colour theme: 0=Bronze (default), 1=Mint, 2=Sky. -->
@@ -209,12 +207,6 @@
         </setting>
         <setting propertyKey="@Properties.jumuahBefore" title="Jumu'ah reminder (min before Dhuhr, 0 = off)">
             <settingConfig type="numeric" min="0" max="180"/>
-        </setting>
-        <setting propertyKey="@Properties.dayRing" title="24 h ring around the main card">
-            <settingConfig type="list">
-                <listEntry value="1">On</listEntry>
-                <listEntry value="0">Off</listEntry>
-            </settingConfig>
         </setting>
         <setting propertyKey="@Properties.extraCard" title="Show the Duha / Tahajjud card">
             <settingConfig type="list">

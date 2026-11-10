@@ -7,7 +7,7 @@
         minApiLevel="4.2.0"
         name="@Strings.AppName"
         type="watch-app"
-        version="1.8.0">
+        version="1.9.0">
 
         <iq:products>
             <!-- Epix Gen 2 family -->

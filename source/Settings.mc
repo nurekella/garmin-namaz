@@ -15,7 +15,7 @@ module Settings {
     // Hardcoded mirror of manifest.xml version="..." — Connect IQ doesn't
     // expose manifest values at runtime, so the on-watch settings menu
     // shows this constant. Bump in lockstep with the manifest.
-    const VERSION = "1.8.0";
+    const VERSION = "1.9.0";
 
     // "kk" / "ru" / "en" — falls back to the system Rez locale when user
     // chose "auto" or never opened settings.
@@ -83,11 +83,6 @@ module Settings {
     // at which to warn; 0 = off.
     function endWarnMinutes() {
         return intProp("endWarn");
-    }
-
-    // Draw the 24 h ring around the main card (1) or not (0).
-    function dayRing() {
-        return intProp("dayRing") == 0 ? 0 : 1;
     }
 
     // Show the optional Duha / Tahajjud card (1) or hide it (0).

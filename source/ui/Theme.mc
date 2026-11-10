@@ -16,32 +16,28 @@ module Theme {
     const COLOR_TEXT_MUTED  = 0x6E6860;  // tertiary — passed prayers
     const COLOR_WARN        = 0xFF7A66;  // a prayer's time is about to run out
 
-    // Accent palettes — selectable via Settings.themeIdx.
-    const ACCENT_BRONZE     = 0xD4A574;
-    const ACCENT_BRONZE_DIM = 0x8A6D4A;
-    const ACCENT_MINT       = 0x6FE0B5;
-    const ACCENT_MINT_DIM   = 0x3F9579;
-    const ACCENT_SKY        = 0x6EB4FF;
-    const ACCENT_SKY_DIM    = 0x3F73B5;
+    // Material 3 dark scheme, one tonal set per accent (Settings.themeIdx):
+    //   accent       primary, for filled buttons and highlights
+    //   onAccent     text on the accent
+    //   container    primary container, the highlighted row / chip
+    //   onContainer  text on the container
+    //   surface      list rows and cards (surface container)
+    //   surfaceHigh  chips, tracks (surface container highest)
+    // Index 0 bronze (default), 1 mint, 2 sky.
+    const PALETTES = [
+        [0xF1BE7E, 0x2A1700, 0x5C4220, 0xFFDDB2, 0x1C1814, 0x2D2620],
+        [0x6FE0B5, 0x00382A, 0x0F4F3B, 0xB6F2DB, 0x121A17, 0x1F2B26],
+        [0x6EB4FF, 0x00315C, 0x1E4B7A, 0xCFE5FF, 0x121820, 0x1F2A36]
+    ];
 
-    // Legacy constants — kept so existing call sites still compile.
-    // New code should use accent() / accentDim() to honour the user's pick.
-    const COLOR_ACCENT      = ACCENT_BRONZE;
-    const COLOR_ACCENT_DIM  = ACCENT_BRONZE_DIM;
+    function _p(i) { return PALETTES[Settings.themeIdx()][i]; }
 
-    function accent() {
-        var idx = Settings.themeIdx();
-        if (idx == 1) { return ACCENT_MINT; }
-        if (idx == 2) { return ACCENT_SKY; }
-        return ACCENT_BRONZE;
-    }
-
-    function accentDim() {
-        var idx = Settings.themeIdx();
-        if (idx == 1) { return ACCENT_MINT_DIM; }
-        if (idx == 2) { return ACCENT_SKY_DIM; }
-        return ACCENT_BRONZE_DIM;
-    }
+    function accent()      { return _p(0); }
+    function onAccent()    { return _p(1); }
+    function container()   { return _p(2); }
+    function onContainer() { return _p(3); }
+    function surface()     { return _p(4); }
+    function surfaceHigh() { return _p(5); }
 
     // Geometry helpers for the 416×416 round Epix Gen 2 face.
     // Other devices in the products list (Fenix 7, FR965) are also
