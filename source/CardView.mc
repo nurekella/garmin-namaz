@@ -66,7 +66,8 @@ class CardView extends WatchUi.View {
     // Only the countdown card shows seconds; the others redraw once a minute.
     function _tick() as Void {
         var min = System.getClockTime().min;
-        if (_order()[_idx % _order().size()] != :countdown && min == _lastMin) { return; }
+        var cur = _order()[_idx % _order().size()];
+        if (cur != :countdown && cur != :overview && min == _lastMin) { return; }
         _lastMin = min;
         WatchUi.requestUpdate();
     }
@@ -164,66 +165,85 @@ class CardView extends WatchUi.View {
         return Fonts.xtiny();
     }
 
+    // Sajda-style list: one rounded card with the six rows, the next time in
+    // a highlighted box, and a filled bar at the bottom with the name and the
+    // live countdown of what comes next.
     function _drawOverview(dc as Graphics.Dc, info, next, fast) as Void {
         var cx = Theme.CENTER_X;
-
-        // Headline: the date; the Hijri date in a tonal chip under it.
-        _text(dc, cx, 40, Fonts.medium(), Theme.COLOR_TEXT, C, _gregStr(info));
-        _pill(dc, cx, 76, 236, 28, Theme.surfaceHigh());
-        _text(dc, cx, 76, Fonts.tiny(), Theme.COLOR_TEXT_DIM, C, _hijriStr(info));
-
-        // One slot: a holiday / fast worth knowing about (filled chip), else the city.
         var nowH = info.hour + info.min / 60.0d + info.sec / 3600.0d;
-        var chip = Occasions.chip(info, Gregorian.info(Time.now().add(new Time.Duration(86400)), Time.FORMAT_SHORT),
-                                  nowH, _times[:maghrib], _times[:isha]);
-        if (chip != null) {
-            var font = _fitFont(dc, chip, 288);
-            var w = dc.getTextWidthInPixels(chip, font) + 28;
-            _pill(dc, cx, 110, (w > 300) ? 300 : w, 28, Theme.container());
-            _text(dc, cx, 110, font, Theme.onContainer(), C, chip);
-        } else {
-            _text(dc, cx, 110, Fonts.tiny(), Theme.COLOR_TEXT_DIM, C,
-                  _resolveCityLabel(_location.getCurrentLocation()));
-        }
 
-        // The six rows as list items: tonal surface, the next one filled.
+        // Header: place and date.
+        var city = _resolveCityLabel(_location.getCurrentLocation());
+        var head = (city.length() > 0 ? city + "  ·  " : "") + _gregStr(info);
+        _text(dc, cx, 34, _fitFont(dc, head, 210), Theme.COLOR_TEXT_DIM, C, head);
+
+        // The card: 290 wide, rows 40 px, bar 50 px.
+        var left = cx - 145;
+        var top = 62;
+        dc.setColor(Theme.surface(), Graphics.COLOR_TRANSPARENT);
+        dc.fillRoundedRectangle(left, top, 290, 290, 26);
+
         var friday = (info.day_of_week == 6);
         var nextSym = (next != null) ? next[:name] : null;
         var prayers = [:fajr, :sunrise, :dhuhr, :asr, :maghrib, :isha];
         for (var i = 0; i < prayers.size(); i++) {
             var sym = prayers[i];
             var t   = _times[sym];
-            var y   = 146 + i * 37;
+            var y   = top + 20 + i * 40;
             var isNext = (sym == nextSym);
 
-            _pill(dc, cx, y, 304, 32, isNext ? Theme.container() : Theme.surface());
+            if (isNext) { _pill(dc, cx + 90, y, 94, 32, Theme.container()); }
             var icon = _iconFor(sym);
-            dc.drawBitmap(cx - 144, y - icon.getHeight() / 2, icon);
+            dc.drawBitmap(cx + 14 - icon.getWidth() / 2, y - icon.getHeight() / 2, icon);
 
             var color = Theme.COLOR_TEXT;
+            var timeColor = Theme.COLOR_TEXT;
             if (isNext) {
-                color = Theme.onContainer();
-            } else if (t == null) {
+                timeColor = Theme.onContainer();
+            } else if (t == null || t < nowH) {
                 color = Theme.COLOR_TEXT_MUTED;
-            } else if (t < nowH) {
-                color = Theme.COLOR_TEXT_MUTED;
+                timeColor = Theme.COLOR_TEXT_MUTED;
             }
             var name = (friday && sym == :dhuhr) ? PrayerNames.jumuah() : PrayerNames.nameOf(sym);
-            _text(dc, cx - 106, y, Fonts.small(), color, L, name);
-            _text(dc, cx + 138, y, Fonts.small(), color, R, TimeFormatter.hhmm(t));
+            if (sym == :sunrise && Settings.extraCard() == 1 && _times[:duha] != null) {
+                _text(dc, cx - 130, y - 7, Fonts.tiny(), color, L, name);
+                _text(dc, cx - 130, y + 11, Fonts.xtiny(), Theme.COLOR_TEXT_MUTED, L,
+                      PrayerNames.pick("Духа", "Духа", "Duha") + " " + TimeFormatter.hhmm(_times[:duha]));
+            } else {
+                _text(dc, cx - 130, y, Fonts.small(), color, L, name);
+            }
+            _text(dc, cx + 90, y, Fonts.small(), timeColor, C, TimeFormatter.hhmm(t));
         }
 
-        // Bottom: Ramadan -> iftar / end of suhoor, else the time to the next prayer.
-        var line = null;
+        // Bottom bar: Ramadan -> iftar / end of suhoor, else the next prayer.
+        var label = null;
+        var secs = 0;
         if (fast != null) {
-            line = _fastLabel(fast) + " " + PrayerNames.timeLeft(TimeFormatter.hm(fast[:secondsUntil]));
+            label = _fastLabel(fast);
+            secs = fast[:secondsUntil];
         } else if (next != null) {
-            line = PrayerNames.timeLeft(TimeFormatter.hm(next[:secondsUntil]));
+            label = PrayerNames.nameOf(next[:name]);
+            secs = next[:secondsUntil];
         }
-        if (line != null) {
-            var bw = dc.getTextWidthInPixels(line, Fonts.small()) + 40;
-            _pill(dc, cx, 372, (bw < 190) ? 190 : ((bw > 230) ? 230 : bw), 34, Theme.accent());
-            _text(dc, cx, 372, Fonts.small(), Theme.onAccent(), C, line);
+        if (label != null) {
+            var by = top + 240;
+            dc.setColor(Theme.accent(), Graphics.COLOR_TRANSPARENT);
+            dc.fillRoundedRectangle(left, by, 290, 50, 26);
+            dc.fillRectangle(left, by, 290, 24);
+            _text(dc, cx - 130, by + 25, Fonts.small(), Theme.onAccent(), L, label);
+            _text(dc, cx + 132, by + 25, Fonts.small(), Theme.onAccent(), R, TimeFormatter.countdown(secs));
+        }
+
+        // Under the card: a holiday / fast worth knowing about, else the Hijri date.
+        var chip = Occasions.chip(info, Gregorian.info(Time.now().add(new Time.Duration(86400)), Time.FORMAT_SHORT),
+                                  nowH, _times[:maghrib], _times[:isha]);
+        if (chip != null) {
+            var font = _fitFont(dc, chip, 230);
+            var w = dc.getTextWidthInPixels(chip, font) + 24;
+            _pill(dc, cx, 377, (w > 250) ? 250 : w, 26, Theme.container());
+            _text(dc, cx, 377, font, Theme.onContainer(), C, chip);
+        } else {
+            _text(dc, cx, 377, Fonts.tiny(), Theme.COLOR_TEXT_DIM, C, _hijriStr(info));
         }
     }
 

@@ -1,0 +1,53 @@
+---
+description: Контекст проекта Namaz KZ (Garmin Connect IQ) — читать перед любой работой
+alwaysApply: true
+---
+
+# Namaz KZ — приложение времени намаза для Garmin Epix Gen 2
+
+Репозиторий: `nurekella/garmin-namaz`. Язык: Monkey C. SDK 9.2.0, minApiLevel 4.2.0.
+Устройство: epix2 (416×416 круглый AMOLED). Версия сейчас 1.9.0 (манифест + `Settings.VERSION` менять вместе).
+Общаться с владельцем по-русски. Владелец «вайбкодит»: объясняй коротко и без жаргона.
+`CLAUDE.md` в корне — это старое ТЗ этапа 1, многое там устарело; ориентируйся на этот файл и код.
+
+## Сборка и проверка
+- Сборка: `powershell -File build.ps1` (`-Device fenix7`, `-Test`, `-Release`). Результат `bin/namaz.prg`.
+- Тесты (114 шт.): `build.ps1 -Test`, затем при запущенном симуляторе `monkeydo bin\namaz_test.prg epix2 /t`.
+- Симулятор: `%APPDATA%\Garmin\ConnectIQ\current-sdk.cfg` → папка SDK → `bin\simulator.exe`, затем `monkeydo bin\namaz.prg epix2`.
+  Глэнс в симуляторе не открывается по Enter: для скриншота временно переименуй `getGlanceView` в `NamazApp.mc`
+  и ОБЯЗАТЕЛЬНО верни обратно (`grep -rn DEBUG source` должен быть пустым).
+- Перед коммитом: сборка + тесты зелёные.
+
+## Установка на часы
+Часы подключены по USB как MTP. Скопировать `bin\namaz.prg` в `EPIX → Internal Storage → GARMIN → Apps`
+(через `Shell.Application NameSpace(17)` в PowerShell). Логи: `GARMIN\Apps\LOGS\CIQ_LOG.BAK`. Затем отключить кабель.
+
+## Архитектура (source/)
+- `calc/PrayerCalculator.mc` — расчёт, `nextAfter`, `currentWindow`. `calc/DumkMethod.mc` — модель ҚМДБ,
+  выведена по muftyat.kz: Fajr 15°, Isha симметрична, восход 1.0°, смещения по широте (<48°N / ≥48°N), потолок сумерек 24.17% ночи, Аср Ханафи. Средняя ошибка <1 мин.
+- `calc/HijriDate.mc` (таблица Умм аль-Кура 1440–1500), `Fasting.mc` (Рамадан, ифтар), `Occasions.mc` (посты/праздники/Джума).
+- `location/LocationProvider.mc`, `Cities.mc` (16 больших), `CityIndex.mc` (ещё 73; всего `Settings.CITY_COUNT = 89`).
+- `notify/PrayerNotifier.mc` (расписание), `FaceData.mc` (поле для циферблата), `BackgroundService.mc`.
+- `CardView.mc` — все карточки (обзор в стиле Sajda, отсчёт с кольцом, неделя, Духа/Тахаджуд). `GlanceView.mc`, `SettingsMenu.mc`, `ui/Theme.mc` (3 темы: бронза/мята/небо), `ui/PrayerNames.mc`.
+- `Settings.mc` — все настройки; `resources/settings/settings.xml` — то же для Garmin Connect.
+
+## Жёсткие правила
+1. **Все настройки должны быть в меню на часах**, не только в Garmin Connect. Новая настройка = пункт в `SettingsMenu.mc` + `settings.xml` + `Settings.mc`.
+2. **Уведомления обязаны работать.** В Background недоступен `Attention`; используется `Notifications.showNotification`.
+   Расписание запускать НЕ в `onStart` (его выполняет и фон). Минимальный интервал temporal event — 5 мин, одно событие за раз.
+3. Фоновый процесс: ~61 КБ памяти (занято ~49) — не тащи в него тяжёлые модули (аннотации `(:background)`, `(:glance)`).
+4. Системный шрифт Garmin не содержит казахских букв (Ә Ғ Қ Ң Ө Ұ Ү Һ І) → в уведомлениях и Menu2 они дают «?».
+   Для системного текста всегда оборачивай в `PrayerNames.safe()`. Свои экраны рисуют векторным шрифтом и показывают казахский нормально.
+5. Тексты на трёх языках: казахский / русский / английский (`PrayerNames.pick(kk, ru, en)` и `resources/strings*`).
+6. Не пушить и не мержить в `main` без явной просьбы владельца. Текущая ветка: `feat/official-model-ramadan-complication`.
+7. Windows-приложение `D:\Projects\namaz-times-windows` — только читать для идей, НЕ менять.
+8. Ключ разработчика `developer_key` / `developer_key.pem` в корне — в `.gitignore`, не коммитить, не выводить.
+
+## Открытые вопросы
+- **Garmin Store:** оригинальный ключ потерян, загружена только бета 1.6.0. Сейчас в манифесте новый appID
+  `9ff22a2c32aa48d385b280ede596d4fd` и временный ключ — его нужно сохранить вне проекта. Варианты: найти старый ключ,
+  написать в поддержку Garmin или новый аккаунт разработчика.
+- Не проверено на реальных часах: поле на циферблате, новый дизайн (Material + список в стиле Sajda), темы «Мята» и «Небо», карточки отсчёта/недели/Духа после последнего редизайна, режим Рамадана.
+- Последняя работа (не закоммичена): `CardView.mc` `_drawOverview` переписан в стиле Sajda
+  (одна карточка, плашка у ближайшего времени, нижняя цветная полоса с отсчётом `Ч:ММ:СС`, обновление каждую секунду).
+  Идеи на потом: Тахаджуд строкой в списке (на круглом экране не помещается), тасбих, каза.
