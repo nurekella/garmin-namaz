@@ -3,6 +3,7 @@ using Toybox.Application;
 using Toybox.Lang;
 using Toybox.Background;
 using Toybox.Attention;
+using Toybox.System;
 using Toybox.Time;
 using Toybox.Time.Gregorian;
 
@@ -68,6 +69,11 @@ class SettingsMenu extends WatchUi.Menu2 {
         var err = Application.Storage.getValue(PrayerNotifier.STORAGE_KEY_BG_ERR);
         if (err == null) { err = PrayerNotifier.getLastError(); }
         if (err != null) { parts += " | " + err; }
+        // API level and how alerts are delivered: "notif" (app notification)
+        // or "wake" (system prompt, older firmware).
+        var v = System.getDeviceSettings().monkeyVersion;
+        parts += " | API " + v[0] + "." + v[1] + "." + v[2]
+               + (PrayerNotifier.canNotify() ? " notif" : " wake");
         return parts;
     }
 

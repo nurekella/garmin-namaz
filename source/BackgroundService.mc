@@ -22,17 +22,16 @@ class BackgroundService extends System.ServiceDelegate {
         // Every run and every failure is kept for the "Diagnostics" row in
         // the watch menu: the only way to see what happened on a real watch.
         Storage.set(PrayerNotifier.STORAGE_KEY_BG_RUN, Time.now().value());
-        try {
-            PrayerNotifier.notifyNow();
-            Storage.remove(PrayerNotifier.STORAGE_KEY_BG_ERR);
-        } catch (e) {
-            _keepError("N", e);
-        }
+        // The alert being delivered now; schedule() below overwrites it.
+        var rec = PrayerNotifier.getScheduled();
+        // Delivered: drop it, so a test alert firing a little early cannot
+        // make schedule() keep it and leave nothing armed.
+        Storage.remove(PrayerNotifier.STORAGE_KEY_NEXT);
 
-        // Re-arm for the next prayer using the user's chosen method +
-        // Asr factor + offsets (NOT hardcoded DUMK — that bug shipped in
-        // 1.1.0 and meant background re-arms ignored user method/offset
-        // settings; alert timing was off for non-default methods).
+        // Re-arm FIRST, for the next prayer, with the user's method + Asr
+        // factor + offsets. Some firmware kills the process inside the
+        // notification call (uncatchable); re-arming first keeps the chain
+        // of alerts alive even then.
         try {
             var location = new LocationProvider();
             Settings.applyToLocator(location);
@@ -40,6 +39,13 @@ class BackgroundService extends System.ServiceDelegate {
             PrayerNotifier.schedule(calc, location);
         } catch (e) {
             _keepError("S", e);
+        }
+
+        try {
+            PrayerNotifier.notifyNow(rec);
+            Storage.remove(PrayerNotifier.STORAGE_KEY_BG_ERR);
+        } catch (e) {
+            _keepError("N", e);
         }
 
         Background.exit(null);

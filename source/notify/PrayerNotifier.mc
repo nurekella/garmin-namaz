@@ -1,5 +1,6 @@
 using Toybox.Background;
 using Toybox.Notifications;
+using Toybox.System;
 using Toybox.Time;
 using Toybox.Time.Gregorian;
 using Toybox.Lang;
@@ -32,23 +33,33 @@ module PrayerNotifier {
     const STORAGE_KEY_BG_RUN   = "bg_run";   // when the background service last ran
     const STORAGE_KEY_BG_ERR   = "bg_err";   // what it threw, if anything
     const MIN_SCHEDULE_GAP_SEC = 5 * 60;
+    // showNotification is attempted with "pending" set and cleared after.
+    // If the firmware kills the app inside the call (seen on an Epix Gen 2,
+    // Connect IQ 6.0.2: "Failed invoking <symbol>", not catchable), pending
+    // survives; the next canNotify() turns that into "bad" for good.
+    const STORAGE_KEY_NOTIF_PENDING = "notif_pending";
+    const STORAGE_KEY_NOTIF_BAD     = "notif_bad";
 
-    // Background-safe alert for the event recorded by schedule() or
-    // scheduleTest(). Title was resolved at schedule time ("Dhuhr 13:00");
-    // the simulator renders only the title, so the time lives there.
-    function notifyNow() {
-        var rec = Storage.get(STORAGE_KEY_NEXT);
+    // Background-safe alert for `rec`, the record schedule() or
+    // scheduleTest() stored for this event (read before re-arming, which
+    // overwrites it). Title was resolved at schedule time ("Dhuhr 13:00").
+    function notifyNow(rec) {
         if (rec == null || rec["title"] == null) { return; }
         if (!Settings.notificationsEnabled() && rec["test"] != true) { return; }
         if (canNotify()) {
             var sub = rec["sub"];
-            Notifications.showNotification(PrayerNames.safe(rec["title"]),
-                PrayerNames.safe((sub != null) ? sub : PrayerNames.prayerTimeLabel()),
-                { :dismissPrevious => true });
+            _show(rec["title"], (sub != null) ? sub : PrayerNames.prayerTimeLabel());
         } else {
-            // API < 5.1 (e.g. Venu Sq 2): system "open app?" prompt.
+            // Older firmware: the system "open app?" prompt, which buzzes.
             Background.requestApplicationWake(PrayerNames.safe(rec["title"]));
         }
+    }
+
+    function _show(title, sub) {
+        Storage.set(STORAGE_KEY_NOTIF_PENDING, true);
+        Notifications.showNotification(PrayerNames.safe(title), PrayerNames.safe(sub),
+            { :dismissPrevious => true });
+        Storage.remove(STORAGE_KEY_NOTIF_PENDING);
     }
 
     // Menu "Test notification", part one: a notification right now from
@@ -58,20 +69,29 @@ module PrayerNotifier {
     function notifyForeground() {
         if (!canNotify()) { return false; }
         try {
-            Notifications.showNotification(PrayerNames.safe(PrayerNames.pick("Тексеру", "Проверка", "Test")),
-                PrayerNames.safe(PrayerNames.prayerTimeLabel()), { :dismissPrevious => true });
+            _show(PrayerNames.pick("Тексеру", "Проверка", "Test"), PrayerNames.prayerTimeLabel());
         } catch (e) {
             return false;
         }
         return true;
     }
 
-    // App notifications need API 5.1. Older firmware (seen on an Epix Gen 2
-    // with Connect IQ 6.0.2) has the Notifications module but not
-    // showNotification: calling it crashes the background service with
-    // "Failed invoking <symbol>". Those watches get the system wake prompt.
+    // App notifications need API 5.1 and a firmware that really has them.
+    // `has :showNotification` is not proof: the Epix Gen 2 above answers
+    // yes and then dies in the call. So: API check, then what earlier
+    // attempts taught us (see STORAGE_KEY_NOTIF_PENDING). Watches that
+    // fail get the system wake prompt instead.
     function canNotify() {
-        return (Toybox has :Notifications) && (Notifications has :showNotification);
+        if (!((Toybox has :Notifications) && (Notifications has :showNotification))) { return false; }
+        var v = System.getDeviceSettings().monkeyVersion;
+        if (v[0] < 5 || (v[0] == 5 && v[1] < 1)) { return false; }
+        if (Storage.get(STORAGE_KEY_NOTIF_BAD) == true) { return false; }
+        if (Storage.get(STORAGE_KEY_NOTIF_PENDING) == true) {
+            Storage.set(STORAGE_KEY_NOTIF_BAD, true);
+            Storage.remove(STORAGE_KEY_NOTIF_PENDING);
+            return false;
+        }
+        return true;
     }
 
     // Menu "Test notification", part two: a real background alert ~5 min from now,
