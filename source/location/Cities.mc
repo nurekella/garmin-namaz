@@ -98,7 +98,7 @@ module Cities {
 
     function localizedName(city, lang) {
         if (city == null) { return ""; }
-        if (lang.equals("kk") || lang.equals("kaz")) { return city[:name_kk]; }
+        if (lang.equals("kk") || lang.equals("kaz")) { return PrayerNames.kz(city[:name_kk]); }
         if (lang.equals("ru") || lang.equals("rus")) { return city[:name_ru]; }
         return city[:name_en];
     }

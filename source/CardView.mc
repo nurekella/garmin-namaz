@@ -222,7 +222,7 @@ class CardView extends WatchUi.View {
             label = _fastLabel(fast);
             secs = fast[:secondsUntil];
         } else if (next != null) {
-            label = PrayerNames.nameOf(next[:name]);
+            label = (friday && next[:name] == :dhuhr) ? PrayerNames.jumuah() : PrayerNames.nameOf(next[:name]);
             secs = next[:secondsUntil];
         }
         if (label != null) {

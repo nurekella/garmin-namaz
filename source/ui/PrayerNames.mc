@@ -10,7 +10,7 @@ module PrayerNames {
 
     const PRAYER_KK = {
         :fajr => "Таң", :sunrise => "Күн", :dhuhr => "Бесін",
-        :asr => "Екінді", :maghrib => "Ақшам", :isha => "Құптан"
+        :asr => "Екінті", :maghrib => "Ақшам", :isha => "Құптан"
     };
     const PRAYER_RU = {
         :fajr => "Фаджр", :sunrise => "Восход", :dhuhr => "Зухр",
@@ -47,16 +47,48 @@ module PrayerNames {
         if (lang.equals("kk")) { table = PRAYER_KK; }
         if (lang.equals("ru")) { table = PRAYER_RU; }
         var name = table[prayerSym];
-        return (name != null) ? name : "";
+        return (name != null) ? kz(name) : "";
     }
 
     // Localized one-off label; honours the in-app language override
     // (Rez strings only follow the system language).
     function pick(kk, ru, en) {
         var lang = Settings.language();
-        if (lang.equals("kk")) { return kk; }
+        if (lang.equals("kk")) { return kz(kk); }
         if (lang.equals("ru")) { return ru; }
         return en;
+    }
+
+    // Kazakh text as the user wants to read it: Cyrillic as written, or the
+    // new Latin alphabet (2021: Ä Ğ İ I/ı Ŋ Ö Q Ş Ū Ü Y) when chosen.
+    function kz(text) {
+        if (!Settings.latin()) { return text; }
+        if (text instanceof Lang.String) { return toLatin(text); }
+        if (text instanceof Lang.Array) {
+            var out = [];
+            for (var i = 0; i < text.size(); i++) { out.add(kz(text[i])); }
+            return out;
+        }
+        return text;
+    }
+
+    // Letter-by-letter Cyrillic -> Kazakh Latin. Letters outside the
+    // Kazakh alphabet (Ц Ч Щ Ё Ю Я Ъ Ь Э) get the usual spelling.
+    const _CYR = "АаӘәБбВвГгҒғДдЕеЁёЖжЗзИиЙйКкҚқЛлМмНнҢңОоӨөПпРрСсТтУуҰұҮүФфХхҺһЦцЧчШшЩщЪъЫыІіЬьЭэЮюЯя";
+    const _LAT = ["A","a","Ä","ä","B","b","V","v","G","g","Ğ","ğ","D","d","E","e","Io","io","J","j","Z","z",
+        "İ","i","İ","i","K","k","Q","q","L","l","M","m","N","n","Ŋ","ŋ","O","o","Ö","ö","P","p","R","r",
+        "S","s","T","t","U","u","Ū","ū","Ü","ü","F","f","H","h","H","h","Ts","ts","Ch","ch","Ş","ş",
+        "Şş","şş","","","Y","y","I","ı","","","E","e","Iu","iu","Ia","ia"];
+
+    function toLatin(text) {
+        var out = "";
+        var chars = text.toCharArray();
+        for (var i = 0; i < chars.size(); i++) {
+            var c = chars[i].toString();
+            var k = _CYR.find(c);
+            out += (k != null) ? _LAT[k] : c;
+        }
+        return out;
     }
 
     // The watch's system font has no Kazakh-only letters (they show as "?"
@@ -74,7 +106,15 @@ module PrayerNames {
         for (var i = 0; i < chars.size(); i++) {
             var c = chars[i].toString();
             var k = _KZ_FROM.find(c);
-            out += (k != null) ? _KZ_TO.substring(k, k + 1) : c;
+            if (k != null) {
+                out += _KZ_TO.substring(k, k + 1);
+            } else if (c.equals("Ŋ")) {
+                out += "Ng";     // Latin Kazakh: the system font has no Ŋ either
+            } else if (c.equals("ŋ")) {
+                out += "ng";
+            } else {
+                out += c;
+            }
         }
         return out;
     }
@@ -109,21 +149,21 @@ module PrayerNames {
 
     function nextLabel() {
         var lang = Settings.language();
-        if (lang.equals("kk")) { return NEXT_KK; }
+        if (lang.equals("kk")) { return kz(NEXT_KK); }
         if (lang.equals("ru")) { return NEXT_RU; }
         return NEXT_EN;
     }
 
     function prayerTimeLabel() {
         var lang = Settings.language();
-        if (lang.equals("kk")) { return PRAYERTIME_KK; }
+        if (lang.equals("kk")) { return kz(PRAYERTIME_KK); }
         if (lang.equals("ru")) { return PRAYERTIME_RU; }
         return PRAYERTIME_EN;
     }
 
     function gpsSearching() {
         var lang = Settings.language();
-        if (lang.equals("kk")) { return GPS_KK; }
+        if (lang.equals("kk")) { return kz(GPS_KK); }
         if (lang.equals("ru")) { return GPS_RU; }
         return GPS_EN;
     }
@@ -131,7 +171,7 @@ module PrayerNames {
     function monthShort(month) {
         if (month < 1 || month > 12) { return ""; }
         var lang = Settings.language();
-        if (lang.equals("kk")) { return MONTHS_KK[month - 1]; }
+        if (lang.equals("kk")) { return kz(MONTHS_KK[month - 1]); }
         if (lang.equals("ru")) { return MONTHS_RU[month - 1]; }
         return MONTHS_EN[month - 1];
     }

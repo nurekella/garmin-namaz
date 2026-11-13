@@ -156,7 +156,7 @@ module HijriDate {
     function monthName(month) {
         if (month < 1 || month > 12) { return ""; }
         var lang = Settings.language();
-        if (lang.equals("kk")) { return _MONTHS_KK[month - 1]; }
+        if (lang.equals("kk")) { return PrayerNames.kz(_MONTHS_KK[month - 1]); }
         if (lang.equals("ru")) { return _MONTHS_RU[month - 1]; }
         return _MONTHS_EN[month - 1];
     }

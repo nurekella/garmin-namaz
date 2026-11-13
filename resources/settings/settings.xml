@@ -12,7 +12,7 @@
         <property id="offsetAsr"     type="number">0</property>
         <property id="offsetMaghrib" type="number">0</property>
         <property id="offsetIsha"    type="number">0</property>
-        <!-- Language override: 0=auto, 1=kk, 2=ru, 3=en. -->
+        <!-- Language override: 0=auto, 1=kk, 2=ru, 3=en, 4=kk Latin. -->
         <property id="langIdx"       type="number">0</property>
         <!-- Calculation method: index into Methods.IDS. 0 = ҚМДБ (default). -->
         <property id="methodIdx"     type="number">0</property>
@@ -166,6 +166,7 @@
                 <listEntry value="1">Kazakh</listEntry>
                 <listEntry value="2">Russian</listEntry>
                 <listEntry value="3">English</listEntry>
+                <listEntry value="4">Kazakh (Latin)</listEntry>
             </settingConfig>
         </setting>
 

@@ -1,6 +1,9 @@
 using Toybox.WatchUi;
 using Toybox.Application;
 using Toybox.Lang;
+using Toybox.Background;
+using Toybox.Time;
+using Toybox.Time.Gregorian;
 
 // On-watch settings menu (MENU / long-press UP). Everything that exists in
 // the Garmin Connect phone app is also here: plenty of people never open
@@ -14,7 +17,7 @@ class SettingsMenu extends WatchUi.Menu2 {
 
     static const ITEMS = [:city, :method, :asr, :notify, :prealert, :endWarn,
                           :fasts, :jumuah, :ramadan, :hijri, :extraCard,
-                          :theme, :lang, :offsets, :testNotify, :version];
+                          :theme, :lang, :offsets, :testNotify, :diag, :version];
 
     var _testSub = null;   // sub-label shown after "Test notification"
 
@@ -34,10 +37,39 @@ class SettingsMenu extends WatchUi.Menu2 {
         }
     }
 
-    function setTestResult(ok) as Void {
-        _testSub = ok ? PrayerNames.pick("5 минуттан кейін", "через 5 мин", "in 5 min")
-                      : PrayerNames.pick("Қате", "Ошибка", "Failed");
+    // fgOk: the instant notification was accepted; bgOk: the one in 5 min
+    // was scheduled.
+    function setTestResult(fgOk, bgOk) as Void {
+        var err = PrayerNames.pick("қате", "ошибка", "failed");
+        _testSub = PrayerNames.pick("қазір ", "сейчас ", "now ") + (fgOk ? "OK" : err)
+                 + ", " + PrayerNames.pick("5 мин: ", "5 мин: ", "5 min: ") + (bgOk ? "OK" : err);
         refresh();
+    }
+
+    // "next 13:05 · bg 12:00 · <error>": what is armed, when the background
+    // service last ran, and what it last threw. For reading off a real watch.
+    static function diagLine() {
+        var parts = "> ";
+        var reg = Background.getTemporalEventRegisteredTime();
+        if (reg == null) {
+            parts += "--";
+        } else if (reg instanceof Time.Moment) {
+            parts += _clock(reg);
+        } else {
+            parts += "+" + (reg.value() / 60) + "m";
+        }
+        var run = Application.Storage.getValue(PrayerNotifier.STORAGE_KEY_BG_RUN);
+        parts += " | bg " + ((run != null) ? _clock(new Time.Moment(run)) : "--");
+        var err = Application.Storage.getValue(PrayerNotifier.STORAGE_KEY_BG_ERR);
+        if (err == null) { err = PrayerNotifier.getLastError(); }
+        if (err != null) { parts += " | " + err; }
+        return parts;
+    }
+
+    // "13 14:05" (day of month + time).
+    static function _clock(moment) {
+        var i = Gregorian.info(moment, Time.FORMAT_SHORT);
+        return i.day + " " + i.hour + ":" + ((i.min < 10) ? "0" : "") + i.min;
     }
 
     function _title() {
@@ -58,6 +90,7 @@ class SettingsMenu extends WatchUi.Menu2 {
         if (id == :ramadan)    { return p.pick("Рамазан режимі", "Режим Рамадана", "Ramadan mode"); }
         if (id == :hijri)      { return p.pick("Хижра түзетуі", "Поправка хиджры", "Hijri adjust"); }
         if (id == :testNotify) { return p.pick("Хабарламаны тексеру", "Проверить уведомление", "Test notification"); }
+        if (id == :diag)       { return p.pick("Диагностика", "Диагностика", "Diagnostics"); }
         if (id == :offsets)    { return p.pick("Түзетулер", "Поправки", "Offsets"); }
         if (id == :lang)       { return p.pick("Тіл", "Язык", "Language"); }
         if (id == :theme)      { return p.pick("Түс", "Цвет", "Theme"); }
@@ -90,6 +123,7 @@ class SettingsMenu extends WatchUi.Menu2 {
             return (a > 0) ? "+" + a : "" + a;
         }
         if (id == :testNotify) { return _testSub; }
+        if (id == :diag)       { return diagLine(); }
         if (id == :lang)     { return LangPickerMenu.ENTRIES[Settings.langIdx()]; }
         if (id == :theme)    { return ThemePickerMenu.label(Settings.themeIdx()); }
         if (id == :version)  { return Settings.VERSION; }
@@ -176,7 +210,11 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             Application.Properties.setValue("hijriAdjust", (a > 2) ? -2 : a);
             _applyAndRefresh();
         } else if (id == :testNotify) {
-            _menu.setTestResult(PrayerNotifier.scheduleTest());
+            var fg = PrayerNotifier.notifyForeground();
+            _menu.setTestResult(fg, PrayerNotifier.scheduleTest());
+        } else if (id == :diag) {
+            // Re-arm from scratch and show the fresh state.
+            _applyAndRefresh();
         } else if (id == :offsets) {
             var menu = new OffsetsMenu();
             WatchUi.pushView(menu, new OffsetsDelegate(menu), WatchUi.SLIDE_LEFT);
@@ -272,7 +310,7 @@ class AsrPickerDelegate extends WatchUi.Menu2InputDelegate {
 
 class LangPickerMenu extends WatchUi.Menu2 {
     // Index = langIdx property. Language names in their own language.
-    static const ENTRIES = ["Auto", "Қазақша", "Русский", "English"];
+    static const ENTRIES = ["Auto", "Қазақша", "Русский", "English", "Qazaqşa"];
     function initialize() {
         Menu2.initialize({ :title => PrayerNames.safe(PrayerNames.pick("Тіл", "Язык", "Language")) });
         var cur = Settings.langIdx();

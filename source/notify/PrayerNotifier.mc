@@ -29,6 +29,8 @@ module PrayerNotifier {
 
     const STORAGE_KEY_NEXT     = "scheduled_prayer";
     const STORAGE_KEY_ERR      = "last_schedule_err";
+    const STORAGE_KEY_BG_RUN   = "bg_run";   // when the background service last ran
+    const STORAGE_KEY_BG_ERR   = "bg_err";   // what it threw, if anything
     const MIN_SCHEDULE_GAP_SEC = 5 * 60;
 
     // Background-safe alert for the event recorded by schedule() or
@@ -49,7 +51,22 @@ module PrayerNotifier {
         }
     }
 
-    // Menu "Test notification": a real background alert ~5 min from now,
+    // Menu "Test notification", part one: a notification right now from
+    // the open app. If this does not show, the watch does not accept app
+    // notifications at all (firmware / Do Not Disturb / settings), whatever
+    // the scheduling does. Returns false if the call threw.
+    function notifyForeground() {
+        if (!(Toybox has :Notifications)) { return false; }
+        try {
+            Notifications.showNotification(PrayerNames.safe(PrayerNames.pick("Тексеру", "Проверка", "Test")),
+                PrayerNames.safe(PrayerNames.prayerTimeLabel()), { :dismissPrevious => true });
+        } catch (e) {
+            return false;
+        }
+        return true;
+    }
+
+    // Menu "Test notification", part two: a real background alert ~5 min from now,
     // through the same path as a prayer alert. Returns false if the
     // platform refused the event.
     function scheduleTest() {

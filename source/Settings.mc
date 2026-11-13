@@ -15,7 +15,7 @@ module Settings {
     // Hardcoded mirror of manifest.xml version="..." — Connect IQ doesn't
     // expose manifest values at runtime, so the on-watch settings menu
     // shows this constant. Bump in lockstep with the manifest.
-    const VERSION = "1.9.0";
+    const VERSION = "1.10.0";
 
     // "kk" / "ru" / "en" — falls back to the system Rez locale when user
     // chose "auto" or never opened settings.
@@ -24,7 +24,7 @@ module Settings {
     // glance/background binaries).
     function language() {
         var idx = langIdx();
-        if (idx == 1) { return "kk"; }
+        if (idx == 1 || idx == 4) { return "kk"; }
         if (idx == 2) { return "ru"; }
         if (idx == 3) { return "en"; }
         // Auto — resolve from system locale.
@@ -39,10 +39,15 @@ module Settings {
         return (v == 1) ? 1 : 2;
     }
 
-    // 0 = auto, 1 = kk, 2 = ru, 3 = en.
+    // 0 = auto, 1 = kk, 2 = ru, 3 = en, 4 = kk in the Latin alphabet.
     function langIdx() {
         var idx = intProp("langIdx");
-        return (idx < 0 || idx > 3) ? 0 : idx;
+        return (idx < 0 || idx > 4) ? 0 : idx;
+    }
+
+    // Kazakh written in the new Latin alphabet (see PrayerNames.kz).
+    function latin() {
+        return langIdx() == 4;
     }
 
     // Pickable places: the big 16 in Cities.all(), then CityIndex.DATA.
