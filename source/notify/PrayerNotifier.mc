@@ -40,7 +40,7 @@ module PrayerNotifier {
         var rec = Storage.get(STORAGE_KEY_NEXT);
         if (rec == null || rec["title"] == null) { return; }
         if (!Settings.notificationsEnabled() && rec["test"] != true) { return; }
-        if (Toybox has :Notifications) {
+        if (canNotify()) {
             var sub = rec["sub"];
             Notifications.showNotification(PrayerNames.safe(rec["title"]),
                 PrayerNames.safe((sub != null) ? sub : PrayerNames.prayerTimeLabel()),
@@ -56,7 +56,7 @@ module PrayerNotifier {
     // notifications at all (firmware / Do Not Disturb / settings), whatever
     // the scheduling does. Returns false if the call threw.
     function notifyForeground() {
-        if (!(Toybox has :Notifications)) { return false; }
+        if (!canNotify()) { return false; }
         try {
             Notifications.showNotification(PrayerNames.safe(PrayerNames.pick("Тексеру", "Проверка", "Test")),
                 PrayerNames.safe(PrayerNames.prayerTimeLabel()), { :dismissPrevious => true });
@@ -64,6 +64,14 @@ module PrayerNotifier {
             return false;
         }
         return true;
+    }
+
+    // App notifications need API 5.1. Older firmware (seen on an Epix Gen 2
+    // with Connect IQ 6.0.2) has the Notifications module but not
+    // showNotification: calling it crashes the background service with
+    // "Failed invoking <symbol>". Those watches get the system wake prompt.
+    function canNotify() {
+        return (Toybox has :Notifications) && (Notifications has :showNotification);
     }
 
     // Menu "Test notification", part two: a real background alert ~5 min from now,

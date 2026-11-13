@@ -2,6 +2,7 @@ using Toybox.WatchUi;
 using Toybox.Application;
 using Toybox.Lang;
 using Toybox.Background;
+using Toybox.Attention;
 using Toybox.Time;
 using Toybox.Time.Gregorian;
 
@@ -41,7 +42,11 @@ class SettingsMenu extends WatchUi.Menu2 {
     // was scheduled.
     function setTestResult(fgOk, bgOk) as Void {
         var err = PrayerNames.pick("қате", "ошибка", "failed");
-        _testSub = PrayerNames.pick("қазір ", "сейчас ", "now ") + (fgOk ? "OK" : err)
+        // Old firmware has no app notifications: say so (the watch vibrated
+        // instead) rather than report an error.
+        var now = PrayerNotifier.canNotify() ? (fgOk ? "OK" : err)
+                                             : PrayerNames.pick("діріл", "вибро", "vibe");
+        _testSub = PrayerNames.pick("қазір ", "сейчас ", "now ") + now
                  + ", " + PrayerNames.pick("5 мин: ", "5 мин: ", "5 min: ") + (bgOk ? "OK" : err);
         refresh();
     }
@@ -211,6 +216,11 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             _applyAndRefresh();
         } else if (id == :testNotify) {
             var fg = PrayerNotifier.notifyForeground();
+            if (!PrayerNotifier.canNotify() && (Attention has :vibrate)) {
+                Attention.vibrate([new Attention.VibeProfile(100, 500), new Attention.VibeProfile(0, 300),
+                                   new Attention.VibeProfile(100, 500), new Attention.VibeProfile(0, 300),
+                                   new Attention.VibeProfile(100, 500)]);
+            }
             _menu.setTestResult(fg, PrayerNotifier.scheduleTest());
         } else if (id == :diag) {
             // Re-arm from scratch and show the fresh state.
