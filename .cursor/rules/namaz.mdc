@@ -33,7 +33,10 @@ alwaysApply: true
 
 ## Жёсткие правила
 1. **Все настройки должны быть в меню на часах**, не только в Garmin Connect. Новая настройка = пункт в `SettingsMenu.mc` + `settings.xml` + `Settings.mc`.
-2. **Уведомления обязаны работать.** В Background недоступен `Attention`; используется `Notifications.showNotification`.
+2. **Уведомления обязаны работать.** В Background недоступен `Attention`; используется `Notifications.showNotification`,
+   но ТОЛЬКО через проверку `PrayerNotifier.canNotify()` (`Notifications has :showNotification`). На часах владельца
+   (Epix Gen 2, Connect IQ 6.0.2) модуль есть, а функции нет — вызов роняет фон. Иначе — `Background.requestApplicationWake`.
+   Симулятор (API 5.2) этого не показывает: проверять по журналу часов `GARMIN\Apps\LOGS\CIQ_LOG.*`.
    Расписание запускать НЕ в `onStart` (его выполняет и фон). Минимальный интервал temporal event — 5 мин, одно событие за раз.
 3. Фоновый процесс: ~61 КБ памяти (занято ~49) — не тащи в него тяжёлые модули (аннотации `(:background)`, `(:glance)`).
 4. Системный шрифт Garmin не содержит казахских букв (Ә Ғ Қ Ң Ө Ұ Ү Һ І) → в уведомлениях и Menu2 они дают «?».
