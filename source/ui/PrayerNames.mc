@@ -80,6 +80,16 @@ module PrayerNames {
         "S","s","T","t","U","u","Ū","ū","Ü","ü","F","f","H","h","H","h","Ts","ts","Ch","ch","Ş","ş",
         "Şş","şş","","","Y","y","I","ı","","","E","e","Iu","iu","Ia","ia"];
 
+    // Text for the watch's own settings menus (system font). In Kazakh the
+    // menus are always in the Latin alphabet: the system font has those
+    // letters but not the Kazakh Cyrillic ones. Our own screens keep
+    // Cyrillic unless the user picked "Kazakh (Latin)".
+    function menu(text) {
+        if (text == null) { return null; }
+        if (Settings.language().equals("kk")) { return safe(toLatin(text)); }
+        return safe(text);
+    }
+
     function toLatin(text) {
         var out = "";
         var chars = text.toCharArray();

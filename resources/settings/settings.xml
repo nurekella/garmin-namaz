@@ -163,7 +163,7 @@
         <setting propertyKey="@Properties.langIdx" title="Language">
             <settingConfig type="list">
                 <listEntry value="0">Auto</listEntry>
-                <listEntry value="1">Kazakh</listEntry>
+                <listEntry value="1">Kazakh (Cyrillic)</listEntry>
                 <listEntry value="2">Russian</listEntry>
                 <listEntry value="3">English</listEntry>
                 <listEntry value="4">Kazakh (Latin)</listEntry>
